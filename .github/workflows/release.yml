@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    branches: [trunk]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  SCHEME: Conductor
+  PROJECT: Conductor.xcodeproj
+  XCODE_VERSION: '16.0'
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    name: Archive – ${{ matrix.platform.name }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - name: macOS
+            destination: "generic/platform=macOS"
+            sdk: macosx
+            artifact: Conductor-macOS
+          - name: iOS
+            destination: "generic/platform=iOS"
+            sdk: iphoneos
+            artifact: Conductor-iOS
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${XCODE_VERSION}.app
+
+      - name: Resolve build number
+        id: version
+        run: |
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Archive
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "${{ matrix.platform.destination }}" \
+            -configuration Release \
+            -archivePath "${{ runner.temp }}/${{ matrix.platform.artifact }}.xcarchive" \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build_number }} \
+            CODE_SIGNING_ALLOWED=NO | xcpretty --color
+
+      - name: Package macOS app
+        if: matrix.platform.sdk == 'macosx'
+        run: |
+          APP_PATH="${{ runner.temp }}/${{ matrix.platform.artifact }}.xcarchive/Products/Applications/Conductor.app"
+          cd "$(dirname "$APP_PATH")"
+          zip -r -y "${{ runner.temp }}/${{ matrix.platform.artifact }}.zip" "Conductor.app"
+
+      - name: Package iOS app
+        if: matrix.platform.sdk == 'iphoneos'
+        run: |
+          ARCHIVE="${{ runner.temp }}/${{ matrix.platform.artifact }}.xcarchive"
+          mkdir -p "${{ runner.temp }}/Payload"
+          cp -R "$ARCHIVE/Products/Applications/Conductor.app" "${{ runner.temp }}/Payload/"
+          cd "${{ runner.temp }}"
+          zip -r -y "${{ matrix.platform.artifact }}.ipa" Payload
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.artifact }}
+          path: |
+            ${{ runner.temp }}/${{ matrix.platform.artifact }}.zip
+            ${{ runner.temp }}/${{ matrix.platform.artifact }}.ipa
+          if-no-files-found: ignore
+
+  release:
+    name: Create Release
+    needs: archive
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version tag
+        id: tag
+        run: |
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="build-${BUILD_NUMBER}-${SHORT_SHA}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release notes
+        id: notes
+        run: |
+          {
+            echo "notes<<NOTES_EOF"
+            echo "## Build ${{ steps.tag.outputs.build_number }}"
+            echo ""
+            echo "**Commit:** \`$(git rev-parse --short HEAD)\` — $(git log -1 --pretty=%s)"
+            echo ""
+            echo "### Artifacts"
+            echo "| Platform | File |"
+            echo "|----------|------|"
+            for f in $(find artifacts -type f \( -name '*.zip' -o -name '*.ipa' \)); do
+              echo "| $(basename "$f" | sed 's/Conductor-//;s/\.\(zip\|ipa\)//') | \`$(basename "$f")\` |"
+            done
+            echo ""
+            echo "> **Note:** These builds are unsigned. For signed distributions, configure code-signing secrets."
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Build ${{ steps.tag.outputs.build_number }}"
+          body: ${{ steps.notes.outputs.notes }}
+          prerelease: true
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.ipa
