@@ -30,5 +30,6 @@ Open `Conductor.xcodeproj` to build and run.
 ## Git Practices
 
 - Do not include `Co-Authored-By`, `Co-Created-By`, or any AI attribution trailers in commit messages.
-- Write commit messages as a short imperative summary (≤ 72 chars) optionally followed by a blank line and a body explaining *why*.
+- Format commit messages as `(topic): change` — e.g. `(ci): add release workflow`, `(model): extract Player from ContentView`.
+- A body after a blank line is only warranted for error corrections or non-obvious design decisions that a moderately skilled Swift developer wouldn't immediately understand. Most commits need only the subject line.
 - Keep commits focused — one logical change per commit.
