@@ -26,7 +26,33 @@ how people actually think and speak.
 Conductor is the intelligent intermediary. It assumes you know what you want but
 shouldn't need to specify every step.
 
-## Principles
+## Values
+
+Conductor is built on three non-negotiable commitments:
+
+### Open Source
+
+The entire codebase is public. Every design decision, every trade-off, every
+line of code is visible and auditable. Contributions are welcome — the project
+improves through collective scrutiny, not closed-door development.
+
+### Transparency
+
+Users deserve to know exactly what the software does on their behalf. Conductor
+does not perform hidden actions, make undisclosed network calls, or obscure its
+decision-making. When it acts, the user can see what it did and why.
+
+### Privacy
+
+User data belongs to users. Conductor processes intent locally wherever
+possible. It does not collect telemetry, phone home, or share data with third
+parties. When network access is required, the user is informed and in control.
+No silent tracking. No analytics. No exceptions.
+
+These three values are not features — they are constraints. Every design
+decision must satisfy all three. Code that violates any of them does not ship.
+
+## Design Principles
 
 - **Clarity over cleverness.** Direct language. No marketing speak.
 - **Systems thinking.** Coordination and flow, not a single input-output mechanism.

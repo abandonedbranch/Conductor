@@ -20,6 +20,14 @@ Open `Conductor.xcodeproj` to build and run.
 - Use `guard` for early exits. Avoid deep nesting.
 - Use Swift's type inference — omit explicit types when the compiler can infer them and the result is still readable.
 
+## Privacy & Transparency
+
+- Do not add analytics, telemetry, or crash-reporting SDKs.
+- Do not make network requests that the user has not explicitly initiated or been informed about.
+- Process data on-device whenever feasible. Prefer local-first architectures.
+- Never store or transmit user data to third-party services without clear, visible user consent.
+- When network access is necessary, surface it to the user — no silent background calls.
+
 ## Architecture
 
 - Follow the pattern: **View → Model → Service**. Views observe models; models call services; services own I/O.
