@@ -33,3 +33,4 @@ Open `Conductor.xcodeproj` to build and run.
 - Format commit messages as `(topic): change` — e.g. `(ci): add release workflow`, `(model): extract Player from ContentView`.
 - A body after a blank line is only warranted for error corrections or non-obvious design decisions that a moderately skilled Swift developer wouldn't immediately understand. Most commits need only the subject line.
 - Keep commits focused — one logical change per commit.
+- Do not include `claude.ai` links in commit messages or pull request descriptions.
