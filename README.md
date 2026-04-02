@@ -33,8 +33,9 @@ Conductor is built on three non-negotiable commitments:
 ### Open Source
 
 The entire codebase is public. Every design decision, every trade-off, every
-line of code is visible and auditable. Contributions are welcome — the project
-improves through collective scrutiny, not closed-door development.
+line of code is visible and auditable. The project is licensed under GPLv3 —
+you are free to fork, modify, and create derivative works. That freedom is the
+point.
 
 ### Transparency
 
