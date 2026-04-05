@@ -41,9 +41,26 @@ class ChatManager {
     
     private let chatsKey = "conductor.savedChats"
     private let messagesKey = "conductor.savedMessages"
+    private let lastSelectedChatKey = "conductor.lastSelectedChat"
     
     init() {
         loadChats()
+    }
+    
+    func saveLastSelectedChat(_ chatId: UUID?) {
+        if let chatId = chatId {
+            UserDefaults.standard.set(chatId.uuidString, forKey: lastSelectedChatKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSelectedChatKey)
+        }
+    }
+    
+    func loadLastSelectedChat() -> Chat? {
+        guard let uuidString = UserDefaults.standard.string(forKey: lastSelectedChatKey),
+              let uuid = UUID(uuidString: uuidString) else {
+            return nil
+        }
+        return chats.first(where: { $0.id == uuid })
     }
     
     func createNewChat() -> Chat {
@@ -101,6 +118,30 @@ class ChatManager {
         }
     }
     
+    func deleteChat(_ chat: Chat) {
+        // Remove the chat
+        chats.removeAll(where: { $0.id == chat.id })
+        
+        // Remove associated messages
+        chatMessages.removeValue(forKey: chat.id)
+        
+        // Clear last selected chat if this was it
+        if let lastSelectedUUID = UserDefaults.standard.string(forKey: lastSelectedChatKey),
+           let uuid = UUID(uuidString: lastSelectedUUID),
+           uuid == chat.id {
+            UserDefaults.standard.removeObject(forKey: lastSelectedChatKey)
+        }
+        
+        saveChats()
+    }
+    
+    func deleteChats(at offsets: IndexSet) {
+        let chatsToDelete = offsets.map { chats[$0] }
+        for chat in chatsToDelete {
+            deleteChat(chat)
+        }
+    }
+    
     private func loadChats() {
         if let data = UserDefaults.standard.data(forKey: chatsKey),
            let decoded = try? JSONDecoder().decode([Chat].self, from: data) {
@@ -128,12 +169,23 @@ struct ContentView: View {
             if let chat = selectedChat {
                 if #available(iOS 19.0, macOS 26.0, *) {
                     ChatDetailView(chat: chat, chatManager: chatManager)
+                        .id(chat.id) // Force view to recreate when chat changes
                 } else {
                     UnsupportedOSView()
                 }
             } else {
                 ChatEmptyStateView()
             }
+        }
+        .onAppear {
+            // Load the last selected chat on startup
+            if selectedChat == nil {
+                selectedChat = chatManager.loadLastSelectedChat()
+            }
+        }
+        .onChange(of: selectedChat) { _, newChat in
+            // Save the selected chat whenever it changes
+            chatManager.saveLastSelectedChat(newChat?.id)
         }
     }
 }
@@ -145,9 +197,35 @@ struct ChatSidebarView: View {
     @Binding var selectedChat: Chat?
     
     var body: some View {
-        List(chatManager.chats, selection: $selectedChat) { chat in
-            ChatRowView(chat: chat)
-                .tag(chat)
+        List(selection: $selectedChat) {
+            ForEach(chatManager.chats) { chat in
+                ChatRowView(chat: chat)
+                    .tag(chat)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            deleteChat(chat)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            deleteChat(chat)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+            }
+            .onDelete { indexSet in
+                // This handles keyboard delete on macOS
+                if let selectedChat = selectedChat,
+                   let index = chatManager.chats.firstIndex(where: { $0.id == selectedChat.id }),
+                   indexSet.contains(index) {
+                    self.selectedChat = nil
+                }
+                
+                chatManager.deleteChats(at: indexSet)
+            }
         }
         .navigationTitle("Conductor")
         #if os(macOS)
@@ -163,6 +241,15 @@ struct ChatSidebarView: View {
                 }
             }
         }
+    }
+    
+    private func deleteChat(_ chat: Chat) {
+        // Clear selection if we're deleting the selected chat
+        if selectedChat?.id == chat.id {
+            selectedChat = nil
+        }
+        
+        chatManager.deleteChat(chat)
     }
 }
 
@@ -182,11 +269,32 @@ struct ChatRowView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
             
-            Text(chat.timestamp, style: .relative)
+            Text(relativeTimeString(from: chat.timestamp))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
+    }
+    
+    private func relativeTimeString(from date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        
+        let minutes = Int(interval / 60)
+        let hours = Int(interval / 3600)
+        let days = Int(interval / 86400)
+        
+        if interval < 60 {
+            return "Just now"
+        } else if minutes < 60 {
+            return "\(minutes)m ago"
+        } else if hours < 24 {
+            return "\(hours)h ago"
+        } else if days < 7 {
+            return "\(days)d ago"
+        } else {
+            return date.formatted(date: .abbreviated, time: .omitted)
+        }
     }
 }
 
@@ -212,11 +320,29 @@ struct ChatDetailView: View {
         
         // Create a session
         let instructions = """
-        You are The Conductor, a helpful virtual assistant and user agent.
-        You provide expert guidance on a variety of topics, and are able to call various built-in tools to automate everyday tasks.
-        Keep your responses clear, practical, and encouraging.
-        Focus on helping and educating the user.
-        """
+You are The Conductor — an intelligent intermediary that interprets human intent \
+and coordinates device capabilities to fulfill that intent.
+
+Your role is orchestration, not assistance. When given a request:
+- Infer the underlying goal, not just the surface request
+- Identify what system capabilities are needed to achieve it
+- Coordinate actions across multiple functions when necessary
+- Explain your reasoning and what you're doing — transparency is non-negotiable
+
+Core principles:
+- Clarity over cleverness: Use direct language. No marketing speak.
+- Systems thinking: Consider workflow and coordination, not just single actions.
+- Minimal friction: Extend the user's thinking; don't make them operate a tool.
+- Technical honesty: Acknowledge your limits. Don't oversell capabilities.
+- Privacy: You process locally. Never suggest sending data externally without explicit user control.
+
+When you act, be explicit about what you're doing and why. The user should always \
+understand your decision-making process. If you can't do something, say so clearly \
+and explain the limitation.
+
+You sit between what users want to accomplish and what their device can do. \
+The user specifies the outcome; you determine the path.
+"""
         self.session = LanguageModelSession(instructions: instructions)
     }
     
@@ -277,6 +403,11 @@ struct ChatDetailView: View {
                     .cornerRadius(20)
                     .lineLimit(1...5)
                     .disabled(isResponding || modelAvailability != .available)
+                    .onSubmit {
+                        Task {
+                            await sendMessage()
+                        }
+                    }
                 
                 Button {
                     Task {
@@ -288,7 +419,7 @@ struct ChatDetailView: View {
                             .controlSize(.regular)
                     } else {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 32))
+                            .font(.system(size: 25))
                             .foregroundStyle(messageText.isEmpty || modelAvailability != .available ? .gray : .blue)
                     }
                 }
