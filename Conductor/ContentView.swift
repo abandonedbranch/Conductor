@@ -1,6 +1,135 @@
 import SwiftUI
-import SwiftUI
 import FoundationModels
+
+// MARK: - Wikipedia Tool
+
+@available(iOS 19.0, macOS 26.0, *)
+struct WikipediaSearchTool: Tool {
+    let name = "searchWikipedia"
+    let description = "Search Wikipedia for a summary of a topic"
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The search query to look up on Wikipedia")
+        var searchQuery: String
+
+        @Guide(description: "Maximum length of the summary to return (default 500)")
+        var maxSummaryLength: Int?
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        let summary = try await searchWikipedia(query: arguments.searchQuery)
+        let maxLength = arguments.maxSummaryLength ?? 500
+
+        let truncatedSummary = String(summary.prefix(maxLength))
+
+        return """
+            Wikipedia Summary for "\(arguments.searchQuery)":
+
+            \(truncatedSummary)
+            """
+    }
+    
+    private func searchWikipedia(query: String) async throws -> String {
+        // Step 1: Use Wikipedia's search API to find the best matching article
+        let articleTitle = try await findArticleTitle(for: query)
+
+        // Step 2: Fetch the summary for that article
+        let summaryURL = "https://en.wikipedia.org/api/rest_v1/page/summary/"
+        guard let encodedTitle = articleTitle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: summaryURL + encodedTitle) else {
+            throw WikipediaError.invalidQuery
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Conductor/1.0 (Apple Intelligence App)", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw WikipediaError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 404 {
+            throw WikipediaError.notFound(query: query)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw WikipediaError.httpError(statusCode: httpResponse.statusCode)
+        }
+
+        let wikipediaResponse = try JSONDecoder().decode(WikipediaResponse.self, from: data)
+
+        return wikipediaResponse.extract
+    }
+
+    private func findArticleTitle(for query: String) async throws -> String {
+        var components = URLComponents(string: "https://en.wikipedia.org/w/api.php")!
+        components.queryItems = [
+            URLQueryItem(name: "action", value: "query"),
+            URLQueryItem(name: "list", value: "search"),
+            URLQueryItem(name: "srsearch", value: query),
+            URLQueryItem(name: "srlimit", value: "1"),
+            URLQueryItem(name: "format", value: "json"),
+        ]
+
+        guard let url = components.url else {
+            throw WikipediaError.invalidQuery
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Conductor/1.0 (Apple Intelligence App)", forHTTPHeaderField: "User-Agent")
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let searchResponse = try JSONDecoder().decode(WikipediaSearchResponse.self, from: data)
+
+        guard let firstResult = searchResponse.query.search.first else {
+            throw WikipediaError.notFound(query: query)
+        }
+
+        return firstResult.title
+    }
+}
+
+// MARK: - Wikipedia Supporting Types
+
+struct WikipediaResponse: Codable {
+    let extract: String
+    let title: String
+    let description: String?
+}
+
+struct WikipediaSearchResponse: Codable {
+    let query: SearchQuery
+
+    struct SearchQuery: Codable {
+        let search: [SearchResult]
+    }
+
+    struct SearchResult: Codable {
+        let title: String
+    }
+}
+
+enum WikipediaError: LocalizedError {
+    case invalidQuery
+    case notFound(query: String)
+    case invalidResponse
+    case httpError(statusCode: Int)
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidQuery:
+            return "The search query is invalid."
+        case .notFound(let query):
+            return "No Wikipedia article found for \"\(query)\"."
+        case .invalidResponse:
+            return "Received an invalid response from Wikipedia."
+        case .httpError(let statusCode):
+            return "Wikipedia returned an error (HTTP \(statusCode))."
+        }
+    }
+}
 
 // MARK: - Models
 
@@ -318,7 +447,7 @@ struct ChatDetailView: View {
         self.chat = chat
         self.chatManager = chatManager
         
-        // Create a session
+        // Create a session with tools
         let instructions = """
 You are The Conductor — an intelligent intermediary that interprets human intent \
 and coordinates device capabilities to fulfill that intent.
@@ -329,12 +458,18 @@ Your role is orchestration, not assistance. When given a request:
 - Coordinate actions across multiple functions when necessary
 - Explain your reasoning and what you're doing — transparency is non-negotiable
 
+Available capabilities:
+- Wikipedia lookup: When you need factual information, historical context, or \
+  encyclopedic knowledge, use the WikipediaSearchTool. Always tell the user \
+  what you're looking up and why.
+
 Core principles:
 - Clarity over cleverness: Use direct language. No marketing speak.
 - Systems thinking: Consider workflow and coordination, not just single actions.
 - Minimal friction: Extend the user's thinking; don't make them operate a tool.
 - Technical honesty: Acknowledge your limits. Don't oversell capabilities.
-- Privacy: You process locally. Never suggest sending data externally without explicit user control.
+- Privacy: You process locally. The Wikipedia tool accesses the internet to \
+  retrieve information — be transparent when using it.
 
 When you act, be explicit about what you're doing and why. The user should always \
 understand your decision-making process. If you can't do something, say so clearly \
@@ -343,7 +478,14 @@ and explain the limitation.
 You sit between what users want to accomplish and what their device can do. \
 The user specifies the outcome; you determine the path.
 """
-        self.session = LanguageModelSession(instructions: instructions)
+        
+        // Create and register tools
+        let wikipediaTool = WikipediaSearchTool()
+        
+        self.session = LanguageModelSession(
+            tools: [wikipediaTool],
+            instructions: instructions
+        )
     }
     
     var body: some View {
@@ -498,7 +640,7 @@ The user specifies the outcome; you determine the path.
             let stream = session.streamResponse(to: userMessageContent)
             
             for try await partial in stream {
-                streamingContent = partial.content ?? ""
+                streamingContent = partial.content
             }
             
             // Once streaming is complete, save the final message
@@ -512,7 +654,7 @@ The user specifies the outcome; you determine the path.
                 chatManager.addMessage(assistantMessage, to: chat.id)
             }
         } catch {
-            // Handle errors
+            // Handle general errors
             let errorMessage = Message(
                 content: "Sorry, I encountered an error: \(error.localizedDescription)",
                 isUser: false,
