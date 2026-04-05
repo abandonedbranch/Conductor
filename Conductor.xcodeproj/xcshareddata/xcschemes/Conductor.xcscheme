@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E21D6F6A2D0A00000012345A"
+               BlueprintIdentifier = "191CDCF70C3979261D40100A"
                BuildableName = "Conductor.app"
                BlueprintName = "Conductor"
                ReferencedContainer = "container:Conductor.xcodeproj">
@@ -35,7 +35,7 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E21D6F7B2D0A00010012345A"
+               BlueprintIdentifier = "9A5F142E85A15722A3BBDBF4"
                BuildableName = "ConductorTests.xctest"
                BlueprintName = "ConductorTests"
                ReferencedContainer = "container:Conductor.xcodeproj">
@@ -46,7 +46,7 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E21D6F852D0A00010012345A"
+               BlueprintIdentifier = "8D2F953A39CB47A3FC86FE42"
                BuildableName = "ConductorUITests.xctest"
                BlueprintName = "ConductorUITests"
                ReferencedContainer = "container:Conductor.xcodeproj">
@@ -68,7 +68,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "E21D6F6A2D0A00000012345A"
+            BlueprintIdentifier = "191CDCF70C3979261D40100A"
             BuildableName = "Conductor.app"
             BlueprintName = "Conductor"
             ReferencedContainer = "container:Conductor.xcodeproj">
@@ -85,7 +85,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "E21D6F6A2D0A00000012345A"
+            BlueprintIdentifier = "191CDCF70C3979261D40100A"
             BuildableName = "Conductor.app"
             BlueprintName = "Conductor"
             ReferencedContainer = "container:Conductor.xcodeproj">
