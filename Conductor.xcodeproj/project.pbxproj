@@ -6,9 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		AFAC5B608ADA8F3BF3778F17 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,46 +24,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		184E9271C0CE529426948044 /* Conductor.app */ = {
-			isa = PBXFileReference;
-			explicitFileType = wrapper.application;
-			includeInIndex = 0;
-			path = Conductor.app;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		F52BBD53F928EB0B9F856C32 /* ConductorTests.xctest */ = {
-			isa = PBXFileReference;
-			explicitFileType = wrapper.cfbundle;
-			includeInIndex = 0;
-			path = ConductorTests.xctest;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		D016BF1AA5AEECF05C154E28 /* ConductorUITests.xctest */ = {
-			isa = PBXFileReference;
-			explicitFileType = wrapper.cfbundle;
-			includeInIndex = 0;
-			path = ConductorUITests.xctest;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
+		184E9271C0CE529426948044 /* Conductor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Conductor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		63219DC22F820D920098F58A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		D016BF1AA5AEECF05C154E28 /* ConductorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConductorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F52BBD53F928EB0B9F856C32 /* ConductorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConductorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		02C8EFE3F9DEC22147785E54 /* Exceptions for "Conductor" folder in "Conductor" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Preview Content",
-			);
-			target = 191CDCF70C3979261D40100A /* Conductor */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B7D4B4E367F9CA7D9E7D16AF /* Conductor */ = {
+		A871C12AC7040B4A8275C746 /* ConductorUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				02C8EFE3F9DEC22147785E54 /* Exceptions for "Conductor" folder in "Conductor" target */,
-			);
-			path = Conductor;
+			path = ConductorUITests;
 			sourceTree = "<group>";
 		};
 		AEE7387BE45C04AE48144FA4 /* ConductorTests */ = {
@@ -74,14 +41,21 @@
 			path = ConductorTests;
 			sourceTree = "<group>";
 		};
-		A871C12AC7040B4A8275C746 /* ConductorUITests */ = {
+		B7D4B4E367F9CA7D9E7D16AF /* Conductor */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ConductorUITests;
+			path = Conductor;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		2DE4AFAFE6CC9CD5126C1650 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7D339793179A19A15AEEC39B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,26 +70,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		2DE4AFAFE6CC9CD5126C1650 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		95FCBF29C8BAF9319D368A5D = {
-			isa = PBXGroup;
-			children = (
-				B7D4B4E367F9CA7D9E7D16AF /* Conductor */,
-				AEE7387BE45C04AE48144FA4 /* ConductorTests */,
-				A871C12AC7040B4A8275C746 /* ConductorUITests */,
-				0A9E116600F627FBBF0465CF /* Products */,
-			);
-			sourceTree = "<group>";
-		};
 		0A9E116600F627FBBF0465CF /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -124,6 +81,17 @@
 				D016BF1AA5AEECF05C154E28 /* ConductorUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		95FCBF29C8BAF9319D368A5D = {
+			isa = PBXGroup;
+			children = (
+				63219DC22F820D920098F58A /* README.md */,
+				B7D4B4E367F9CA7D9E7D16AF /* Conductor */,
+				AEE7387BE45C04AE48144FA4 /* ConductorTests */,
+				A871C12AC7040B4A8275C746 /* ConductorUITests */,
+				0A9E116600F627FBBF0465CF /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -151,29 +119,6 @@
 			productReference = 184E9271C0CE529426948044 /* Conductor.app */;
 			productType = "com.apple.product-type.application";
 		};
-		9A5F142E85A15722A3BBDBF4 /* ConductorTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 7DD003FC0049541883E7BCEE /* Build configuration list for PBXNativeTarget "ConductorTests" */;
-			buildPhases = (
-				4C94235539E5768EE593FDEC /* Sources */,
-				D740E7AB07E09B76533928DC /* Frameworks */,
-				D834E11CEE786C7DF8F85775 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				BCBDF0B1D8B24B674C653458 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				AEE7387BE45C04AE48144FA4 /* ConductorTests */,
-			);
-			name = ConductorTests;
-			packageProductDependencies = (
-			);
-			productName = ConductorTests;
-			productReference = F52BBD53F928EB0B9F856C32 /* ConductorTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		8D2F953A39CB47A3FC86FE42 /* ConductorUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A558C021397673CEEDC42A7C /* Build configuration list for PBXNativeTarget "ConductorUITests" */;
@@ -197,6 +142,29 @@
 			productReference = D016BF1AA5AEECF05C154E28 /* ConductorUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		9A5F142E85A15722A3BBDBF4 /* ConductorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7DD003FC0049541883E7BCEE /* Build configuration list for PBXNativeTarget "ConductorTests" */;
+			buildPhases = (
+				4C94235539E5768EE593FDEC /* Sources */,
+				D740E7AB07E09B76533928DC /* Frameworks */,
+				D834E11CEE786C7DF8F85775 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BCBDF0B1D8B24B674C653458 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AEE7387BE45C04AE48144FA4 /* ConductorTests */,
+			);
+			name = ConductorTests;
+			packageProductDependencies = (
+			);
+			productName = ConductorTests;
+			productReference = F52BBD53F928EB0B9F856C32 /* ConductorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -210,11 +178,11 @@
 					191CDCF70C3979261D40100A = {
 						CreatedOnToolsVersion = 16.0;
 					};
-					9A5F142E85A15722A3BBDBF4 = {
+					8D2F953A39CB47A3FC86FE42 = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = 191CDCF70C3979261D40100A;
 					};
-					8D2F953A39CB47A3FC86FE42 = {
+					9A5F142E85A15722A3BBDBF4 = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = 191CDCF70C3979261D40100A;
 					};
@@ -241,6 +209,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		492BC6681A3E6A70F22A1F18 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6CEE318E8A757600017597EC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -255,23 +230,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		492BC6681A3E6A70F22A1F18 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AED7AD80AB88FFABDE7523F8 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		4C94235539E5768EE593FDEC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -286,18 +247,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AED7AD80AB88FFABDE7523F8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		BCBDF0B1D8B24B674C653458 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 191CDCF70C3979261D40100A /* Conductor */;
-			targetProxy = AFAC5B608ADA8F3BF3778F17 /* PBXContainerItemProxy */;
-		};
 		A247C0C61F761F3859DD9EA6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 191CDCF70C3979261D40100A /* Conductor */;
 			targetProxy = DF07C747232429D13050AFC5 /* PBXContainerItemProxy */;
+		};
+		BCBDF0B1D8B24B674C653458 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 191CDCF70C3979261D40100A /* Conductor */;
+			targetProxy = AFAC5B608ADA8F3BF3778F17 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -596,15 +564,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CBB6E20304ADB95641A9ECCD /* Build configuration list for PBXNativeTarget "Conductor" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				E21D6F912D0A00010012345A /* Debug */,
-				E21D6F922D0A00010012345A /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		7DD003FC0049541883E7BCEE /* Build configuration list for PBXNativeTarget "ConductorTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -619,6 +578,15 @@
 			buildConfigurations = (
 				E21D6F972D0A00010012345A /* Debug */,
 				E21D6F982D0A00010012345A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CBB6E20304ADB95641A9ECCD /* Build configuration list for PBXNativeTarget "Conductor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E21D6F912D0A00010012345A /* Debug */,
+				E21D6F922D0A00010012345A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
