@@ -1,136 +1,6 @@
 import SwiftUI
 import FoundationModels
 
-// MARK: - Wikipedia Tool
-
-@available(iOS 19.0, macOS 26.0, *)
-struct WikipediaSearchTool: Tool {
-    let name = "searchWikipedia"
-    let description = "Search Wikipedia for a summary of a topic"
-
-    @Generable
-    struct Arguments {
-        @Guide(description: "The search query to look up on Wikipedia")
-        var searchQuery: String
-
-        @Guide(description: "Maximum length of the summary to return (default 500)")
-        var maxSummaryLength: Int?
-    }
-
-    func call(arguments: Arguments) async throws -> String {
-        let summary = try await searchWikipedia(query: arguments.searchQuery)
-        let maxLength = arguments.maxSummaryLength ?? 500
-
-        let truncatedSummary = String(summary.prefix(maxLength))
-
-        return """
-            Wikipedia Summary for "\(arguments.searchQuery)":
-
-            \(truncatedSummary)
-            """
-    }
-    
-    private func searchWikipedia(query: String) async throws -> String {
-        // Step 1: Use Wikipedia's search API to find the best matching article
-        let articleTitle = try await findArticleTitle(for: query)
-
-        // Step 2: Fetch the summary for that article
-        let summaryURL = "https://en.wikipedia.org/api/rest_v1/page/summary/"
-        guard let encodedTitle = articleTitle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              let url = URL(string: summaryURL + encodedTitle) else {
-            throw WikipediaError.invalidQuery
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("Conductor/1.0 (Apple Intelligence App)", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WikipediaError.invalidResponse
-        }
-
-        if httpResponse.statusCode == 404 {
-            throw WikipediaError.notFound(query: query)
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw WikipediaError.httpError(statusCode: httpResponse.statusCode)
-        }
-
-        let wikipediaResponse = try JSONDecoder().decode(WikipediaResponse.self, from: data)
-
-        return wikipediaResponse.extract
-    }
-
-    private func findArticleTitle(for query: String) async throws -> String {
-        var components = URLComponents(string: "https://en.wikipedia.org/w/api.php")!
-        components.queryItems = [
-            URLQueryItem(name: "action", value: "query"),
-            URLQueryItem(name: "list", value: "search"),
-            URLQueryItem(name: "srsearch", value: query),
-            URLQueryItem(name: "srlimit", value: "1"),
-            URLQueryItem(name: "format", value: "json"),
-        ]
-
-        guard let url = components.url else {
-            throw WikipediaError.invalidQuery
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("Conductor/1.0 (Apple Intelligence App)", forHTTPHeaderField: "User-Agent")
-
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let searchResponse = try JSONDecoder().decode(WikipediaSearchResponse.self, from: data)
-
-        guard let firstResult = searchResponse.query.search.first else {
-            throw WikipediaError.notFound(query: query)
-        }
-
-        return firstResult.title
-    }
-}
-
-// MARK: - Wikipedia Supporting Types
-
-struct WikipediaResponse: Codable {
-    let extract: String
-    let title: String
-    let description: String?
-}
-
-struct WikipediaSearchResponse: Codable {
-    let query: SearchQuery
-
-    struct SearchQuery: Codable {
-        let search: [SearchResult]
-    }
-
-    struct SearchResult: Codable {
-        let title: String
-    }
-}
-
-enum WikipediaError: LocalizedError {
-    case invalidQuery
-    case notFound(query: String)
-    case invalidResponse
-    case httpError(statusCode: Int)
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidQuery:
-            return "The search query is invalid."
-        case .notFound(let query):
-            return "No Wikipedia article found for \"\(query)\"."
-        case .invalidResponse:
-            return "Received an invalid response from Wikipedia."
-        case .httpError(let statusCode):
-            return "Wikipedia returned an error (HTTP \(statusCode))."
-        }
-    }
-}
-
 // MARK: - Models
 
 struct Chat: Identifiable, Hashable, Codable {
@@ -152,12 +22,30 @@ struct Message: Identifiable, Codable {
     let content: String
     let isUser: Bool
     let timestamp: Date
-    
-    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date) {
+    var toolsUsed: [ToolBadge]
+    var sources: [ToolSource]
+
+    enum CodingKeys: String, CodingKey {
+        case id, content, isUser, timestamp, toolsUsed, sources
+    }
+
+    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = []) {
         self.id = id
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
+        self.toolsUsed = toolsUsed
+        self.sources = sources
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        content = try container.decode(String.self, forKey: .content)
+        isUser = try container.decode(Bool.self, forKey: .isUser)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        toolsUsed = try container.decodeIfPresent([ToolBadge].self, forKey: .toolsUsed) ?? []
+        sources = try container.decodeIfPresent([ToolSource].self, forKey: .sources) ?? []
     }
 }
 
@@ -439,16 +327,13 @@ struct ChatDetailView: View {
     @State private var isResponding = false
     @State private var streamingContent = ""
     @State private var modelAvailability: SystemLanguageModel.Availability = .unavailable(.modelNotReady)
-    
+    @State private var session: LanguageModelSession
+
     private let model = SystemLanguageModel.default
-    private let session: LanguageModelSession
-    
-    init(chat: Chat, chatManager: ChatManager) {
-        self.chat = chat
-        self.chatManager = chatManager
-        
-        // Create a session with tools
-        let instructions = """
+    private let tools: [any Tool]
+    private let toolTracker: ToolUsageTracker
+
+    private static let instructions = """
 You are The Conductor — an intelligent intermediary that interprets human intent \
 and coordinates device capabilities to fulfill that intent.
 
@@ -458,34 +343,53 @@ Your role is orchestration, not assistance. When given a request:
 - Coordinate actions across multiple functions when necessary
 - Explain your reasoning and what you're doing — transparency is non-negotiable
 
-Available capabilities:
-- Wikipedia lookup: When you need factual information, historical context, or \
-  encyclopedic knowledge, use the WikipediaSearchTool. Always tell the user \
-  what you're looking up and why.
+IMPORTANT RULES:
+- When you do not know something, ALWAYS use one of your available search tools to \
+  look it up. Do not guess. Do not apologize. Search first.
+- If the user asks a factual question, use a tool before responding.
+- Use the most relevant tool for the domain. Combine multiple tools when appropriate.
+- Always synthesize results into a coherent answer rather than dumping raw data.
+- If a search fails, tell the user exactly what you searched for and that no results \
+  were found. Suggest a different search term.
+- Never say "I am unable to provide information." Instead, explain specifically what \
+  you tried and why it did not work.
+- When the user asks for research, medical literature, academic papers, or scientific \
+  information, you MUST call the appropriate research tool. Do not fabricate results.
 
 Core principles:
 - Clarity over cleverness: Use direct language. No marketing speak.
 - Systems thinking: Consider workflow and coordination, not just single actions.
 - Minimal friction: Extend the user's thinking; don't make them operate a tool.
-- Technical honesty: Acknowledge your limits. Don't oversell capabilities.
-- Privacy: You process locally. The Wikipedia tool accesses the internet to \
-  retrieve information — be transparent when using it.
+- Technical honesty: Acknowledge your limits specifically — never give vague refusals.
+- Privacy: You process locally. The search tools access the internet to \
+  retrieve information — be transparent when using them.
 
 When you act, be explicit about what you're doing and why. The user should always \
-understand your decision-making process. If you can't do something, say so clearly \
-and explain the limitation.
+understand your decision-making process.
 
 You sit between what users want to accomplish and what their device can do. \
 The user specifies the outcome; you determine the path.
 """
-        
-        // Create and register tools
-        let wikipediaTool = WikipediaSearchTool()
-        
-        self.session = LanguageModelSession(
-            tools: [wikipediaTool],
-            instructions: instructions
-        )
+
+    init(chat: Chat, chatManager: ChatManager) {
+        self.chat = chat
+        self.chatManager = chatManager
+
+        let tracker = ToolUsageTracker()
+        let tools: [any Tool] = [
+            WikipediaSearchTool(tracker: tracker),
+            PubMedSearchTool(tracker: tracker),
+            SemanticScholarSearchTool(tracker: tracker),
+            ArXivSearchTool(tracker: tracker),
+            OpenAlexSearchTool(tracker: tracker),
+            CrossRefSearchTool(tracker: tracker),
+        ]
+        self.toolTracker = tracker
+        self.tools = tools
+        self._session = State(initialValue: LanguageModelSession(
+            tools: tools,
+            instructions: Self.instructions
+        ))
     }
     
     var body: some View {
@@ -500,8 +404,10 @@ The user specifies the outcome; you determine the path.
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message)
-                                .id(message.id)
+                            MessageBubbleView(message: message) {
+                                Task { await regenerate(message) }
+                            }
+                            .id(message.id)
                         }
                         
                         // Show streaming response
@@ -634,38 +540,140 @@ The user specifies the outcome; you determine the path.
         // Start streaming response
         isResponding = true
         streamingContent = ""
-        
+        await toolTracker.reset()
+
         do {
-            // Stream the response from Foundation Models
-            let stream = session.streamResponse(to: userMessageContent)
-            
-            for try await partial in stream {
-                streamingContent = partial.content
+            try await streamResponse(to: userMessageContent)
+
+            // Detect refusal loops — if the model repeated itself, compact and retry
+            if isRepeatedResponse() {
+                // Remove the repeated response we just appended
+                if let last = messages.last, !last.isUser {
+                    messages.removeLast()
+                }
+                compactSession()
+                streamingContent = ""
+                await toolTracker.reset()
+                try await streamResponse(
+                    to: "\(userMessageContent)\n\n(If you cannot answer from memory, use one of your search tools to look it up. Do not apologize — search or explain what you would need to answer.)"
+                )
             }
-            
-            // Once streaming is complete, save the final message
-            if !streamingContent.isEmpty {
-                let assistantMessage = Message(
-                    content: streamingContent,
+        } catch {
+            let isGenerationError = String(describing: error).contains("GenerationError")
+
+            if isGenerationError {
+                // Context exhausted — compact the transcript and retry
+                compactSession()
+                streamingContent = ""
+                await toolTracker.reset()
+
+                do {
+                    try await streamResponse(to: userMessageContent)
+                } catch {
+                    let errorMessage = Message(
+                        content: "The conversation is too long even after compacting. Try starting a new chat.",
+                        isUser: false,
+                        timestamp: Date()
+                    )
+                    messages.append(errorMessage)
+                    chatManager.addMessage(errorMessage, to: chat.id)
+                }
+            } else {
+                let errorMessage = Message(
+                    content: "Something went wrong: \(error.localizedDescription)",
                     isUser: false,
                     timestamp: Date()
                 )
-                messages.append(assistantMessage)
-                chatManager.addMessage(assistantMessage, to: chat.id)
+                messages.append(errorMessage)
+                chatManager.addMessage(errorMessage, to: chat.id)
             }
+        }
+
+        isResponding = false
+        streamingContent = ""
+    }
+
+    private func streamResponse(to prompt: String) async throws {
+        let stream = session.streamResponse(to: prompt)
+
+        for try await partial in stream {
+            streamingContent = partial.content
+        }
+
+        if !streamingContent.isEmpty {
+            let usedTools = await toolTracker.badgeSnapshot()
+            let usedSources = await toolTracker.sourceSnapshot()
+            let assistantMessage = Message(
+                content: streamingContent,
+                isUser: false,
+                timestamp: Date(),
+                toolsUsed: usedTools,
+                sources: usedSources
+            )
+            messages.append(assistantMessage)
+            chatManager.addMessage(assistantMessage, to: chat.id)
+        }
+    }
+
+    private func regenerate(_ assistantMessage: Message) async {
+        // Find the user message that preceded this response
+        guard let index = messages.firstIndex(where: { $0.id == assistantMessage.id }),
+              index > 0,
+              messages[index - 1].isUser else { return }
+        guard !isResponding else { return }
+
+        let userPrompt = messages[index - 1].content
+
+        // Remove the old assistant message
+        messages.remove(at: index)
+
+        isResponding = true
+        streamingContent = ""
+        await toolTracker.reset()
+
+        // Compact to drop the old response from the transcript
+        compactSession()
+
+        do {
+            try await streamResponse(to: userPrompt)
         } catch {
-            // Handle general errors
             let errorMessage = Message(
-                content: "Sorry, I encountered an error: \(error.localizedDescription)",
+                content: "Regeneration failed: \(error.localizedDescription)",
                 isUser: false,
                 timestamp: Date()
             )
             messages.append(errorMessage)
             chatManager.addMessage(errorMessage, to: chat.id)
         }
-        
+
         isResponding = false
         streamingContent = ""
+    }
+
+    private func isRepeatedResponse() -> Bool {
+        let assistantMessages = messages.filter { !$0.isUser }
+        guard assistantMessages.count >= 2 else { return false }
+        let last = assistantMessages[assistantMessages.count - 1].content
+        let prev = assistantMessages[assistantMessages.count - 2].content
+        return last == prev
+    }
+
+    private func compactSession() {
+        let transcript = session.transcript
+        // Keep the first entry (establishes context) and the last few exchanges
+        let allEntries = Array(transcript)
+        let keepCount = min(4, allEntries.count)
+        let entriesToKeep: [Transcript.Entry]
+        if allEntries.count <= keepCount {
+            entriesToKeep = allEntries
+        } else {
+            entriesToKeep = [allEntries[0]] + allEntries.suffix(keepCount - 1)
+        }
+
+        let compactedTranscript = Transcript(entries: entriesToKeep)
+        let newSession = LanguageModelSession(tools: tools, transcript: compactedTranscript)
+        newSession.prewarm()
+        session = newSession
     }
 }
 
@@ -673,33 +681,183 @@ The user specifies the outcome; you determine the path.
 
 struct MessageBubbleView: View {
     let message: Message
-    
+    var onRegenerate: (() -> Void)?
+    @State private var showCopied = false
+
     var body: some View {
         HStack {
             if message.isUser {
                 Spacer(minLength: 60)
             }
-            
+
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
-                    .padding(12)
-                    #if os(macOS)
-                    .background(message.isUser ? Color.blue : Color(nsColor: .controlBackgroundColor))
-                    #else
-                    .background(message.isUser ? Color.blue : Color(uiColor: .systemGray5))
-                    #endif
-                    .foregroundStyle(message.isUser ? .white : .primary)
-                    .cornerRadius(16)
-                
-                Text(message.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                if message.isUser {
+                    Text(message.content)
+                        .padding(12)
+                        .background(Color.blue)
+                        .foregroundStyle(.white)
+                        .cornerRadius(16)
+                } else {
+                    MarkdownTextView(content: message.content)
+                        .padding(12)
+                        #if os(macOS)
+                        .background(Color(nsColor: .controlBackgroundColor))
+                        #else
+                        .background(Color(uiColor: .systemGray5))
+                        #endif
+                        .cornerRadius(16)
+                }
+
+                if !message.sources.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(message.sources, id: \.self) { source in
+                            Link(destination: URL(string: source.url)!) {
+                                Label(source.title, systemImage: "link")
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 6) {
+                    Text(message.timestamp, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(message.toolsUsed, id: \.self) { badge in
+                        Image(systemName: badge.icon)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(badge.tint.color)
+                            .clipShape(Circle())
+                            .help(badge.label)
+                    }
+
+                    if !message.isUser {
+                        Button {
+                            #if os(macOS)
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(message.content, forType: .string)
+                            #else
+                            UIPasteboard.general.string = message.content
+                            #endif
+                            showCopied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                showCopied = false
+                            }
+                        } label: {
+                            Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Copy")
+
+                        if let onRegenerate {
+                            Button(action: onRegenerate) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Regenerate")
+                        }
+                    }
+                }
             }
-            
+
             if !message.isUser {
                 Spacer(minLength: 60)
             }
         }
+    }
+}
+
+// MARK: - Markdown Text View
+
+struct MarkdownTextView: View {
+    let content: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .heading(let level, let text):
+                    markdownText(text)
+                        .font(headingFont(level))
+                        .fontWeight(.semibold)
+                case .paragraph(let text):
+                    markdownText(text)
+                }
+            }
+        }
+    }
+
+    private func markdownText(_ string: String) -> Text {
+        if let attributed = try? AttributedString(
+            markdown: string,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
+            return Text(attributed)
+        }
+        return Text(string)
+    }
+
+    private func headingFont(_ level: Int) -> Font {
+        switch level {
+        case 1: return .title
+        case 2: return .title2
+        case 3: return .title3
+        default: return .headline
+        }
+    }
+
+    private enum Block {
+        case heading(level: Int, text: String)
+        case paragraph(String)
+    }
+
+    private var blocks: [Block] {
+        var result: [Block] = []
+        var currentLines: [String] = []
+
+        func flushParagraph() {
+            let text = currentLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                result.append(.paragraph(text))
+            }
+            currentLines.removeAll()
+        }
+
+        for line in content.components(separatedBy: "\n") {
+            if let heading = parseHeading(line) {
+                flushParagraph()
+                result.append(heading)
+            } else if line.trimmingCharacters(in: .whitespaces).isEmpty && !currentLines.isEmpty {
+                flushParagraph()
+            } else {
+                currentLines.append(line)
+            }
+        }
+        flushParagraph()
+        return result
+    }
+
+    private func parseHeading(_ line: String) -> Block? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        var level = 0
+        for char in trimmed {
+            if char == "#" { level += 1 } else { break }
+        }
+        guard level >= 1, level <= 6,
+              trimmed.count > level,
+              trimmed[trimmed.index(trimmed.startIndex, offsetBy: level)] == " " else {
+            return nil
+        }
+        let text = String(trimmed.dropFirst(level + 1))
+        return .heading(level: level, text: text)
     }
 }
 
