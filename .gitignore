@@ -29,6 +29,7 @@ Pods/
 
 # Claude Code
 .claude/
+.mcp.json
 
 # Secrets / env
 .env
