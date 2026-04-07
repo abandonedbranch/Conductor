@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class ConductorUITests: XCTestCase {
     let app = XCUIApplication()
 
