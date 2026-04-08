@@ -130,13 +130,26 @@ Thrown by `ActionTool` when multiple capabilities match. Contains only the count
 
 ### System Prompt
 
-The system prompt changes to reflect the three-tool model. It no longer lists individual tools or Automator-specific instructions. Core directives:
+The current system prompt is 26 lines of prose — identity statements, behavioral rules, search mandates, platform-specific addenda. Every token of it sits in context for the entire session. With only three tools, the prompt can shrink dramatically.
 
-- Use `action` when the user wants something done.
-- Use `library` when the user wants to know something.
-- Use `manual` when asked about Conductor's capabilities.
-- Respond tersely. Do not elaborate unless asked.
-- If a tool throws an error, explain the situation in one sentence.
+The new prompt must be as terse as possible. Every sentence competes with user conversation for context window space. Design principles:
+
+- **No tool-specific instructions.** The tools are self-describing via their `name`, `description`, and `@Guide` annotations. The prompt should not duplicate what the tools already declare.
+- **No capability enumeration.** That's what `manual` is for.
+- **No behavioral essays.** One sentence per directive, maximum.
+- **No platform-specific addenda.** Automator is a registered capability, not a prompt concern.
+
+Target: under 10 lines. The prompt establishes identity and tone, nothing more. Example shape (not final):
+
+```
+You are The Conductor. You orchestrate device capabilities to fulfill user intent.
+Use action to do. Use library to know. Use manual to explain yourself.
+Respond tersely. One sentence when one sentence suffices.
+If a tool errors, explain in one sentence. Do not apologize.
+Never fabricate information. If you lack data, say so.
+```
+
+The exact wording will be refined during implementation to match what the on-device model responds best to.
 
 ### Session Initialization
 
