@@ -37,6 +37,7 @@ struct ToolSource: Codable, Hashable {
 actor ToolUsageTracker {
     private var badges: Set<ToolBadge> = []
     private var sources: [ToolSource] = []
+    private var workflowPreview: WorkflowPreview?
 
     func record(_ badge: ToolBadge) {
         badges.insert(badge)
@@ -51,6 +52,7 @@ actor ToolUsageTracker {
     func reset() {
         badges.removeAll()
         sources.removeAll()
+        workflowPreview = nil
     }
 
     func badgeSnapshot() -> [ToolBadge] {
@@ -59,5 +61,13 @@ actor ToolUsageTracker {
 
     func sourceSnapshot() -> [ToolSource] {
         sources
+    }
+
+    func setWorkflowPreview(_ preview: WorkflowPreview) {
+        workflowPreview = preview
+    }
+
+    func workflowPreviewSnapshot() -> WorkflowPreview? {
+        workflowPreview
     }
 }
