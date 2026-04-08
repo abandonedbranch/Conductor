@@ -58,4 +58,72 @@ struct AutomatorActionIndexTests {
         #expect(info.outputTypes.isEmpty)
         #expect(info.defaultParameters.isEmpty)
     }
+
+    // MARK: - Search
+
+    @Test("Matches actions by name substring")
+    func searchByName() async {
+        let actions = [
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: ["AMName": "Scale Images"]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: ["AMName": "Copy Finder Items"]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/c.action"), plist: ["AMName": "Move Finder Items"]),
+        ]
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "scale", inputType: nil, maxResults: 5)
+        #expect(results.count == 1)
+        #expect(results[0].name == "Scale Images")
+    }
+
+    @Test("Matches actions by keyword")
+    func searchByKeyword() async {
+        let actions = [
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: [
+                "AMName": "Scale Images",
+                "AMKeywords": ["resize", "shrink"],
+            ]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: ["AMName": "Ask for Text"]),
+        ]
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "resize", inputType: nil, maxResults: 5)
+        #expect(results.count == 1)
+        #expect(results[0].name == "Scale Images")
+    }
+
+    @Test("Filters by input UTI type")
+    func searchFiltersByInputType() async {
+        let actions = [
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: [
+                "AMName": "Scale Images",
+                "AMAccepts": ["Types": ["public.image"], "Container": "List"],
+            ]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: [
+                "AMName": "Combine PDF Pages",
+                "AMAccepts": ["Types": ["com.adobe.pdf"], "Container": "List"],
+            ]),
+        ]
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "", inputType: "public.image", maxResults: 5)
+        #expect(results.count == 1)
+        #expect(results[0].name == "Scale Images")
+    }
+
+    @Test("Respects maxResults limit")
+    func searchRespectsLimit() async {
+        let actions = (1...10).map { i in
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/\(i).action"), plist: ["AMName": "Action \(i)"])
+        }
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "action", inputType: nil, maxResults: 3)
+        #expect(results.count == 3)
+    }
+
+    @Test("Case-insensitive search")
+    func searchCaseInsensitive() async {
+        let actions = [
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: ["AMName": "Scale Images"]),
+        ]
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "SCALE", inputType: nil, maxResults: 5)
+        #expect(results.count == 1)
+    }
 }
