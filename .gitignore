@@ -27,6 +27,10 @@ Pods/
 *.swp
 *~.nib
 
+# Claude Code
+.claude/
+.mcp.json
+
 # Secrets / env
 .env
 *.xcconfig
