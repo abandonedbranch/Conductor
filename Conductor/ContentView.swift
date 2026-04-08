@@ -24,18 +24,20 @@ struct Message: Identifiable, Codable {
     let timestamp: Date
     var toolsUsed: [ToolBadge]
     var sources: [ToolSource]
+    var workflowPreview: WorkflowPreview?
 
     enum CodingKeys: String, CodingKey {
-        case id, content, isUser, timestamp, toolsUsed, sources
+        case id, content, isUser, timestamp, toolsUsed, sources, workflowPreview
     }
 
-    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = []) {
+    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = [], workflowPreview: WorkflowPreview? = nil) {
         self.id = id
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
         self.toolsUsed = toolsUsed
         self.sources = sources
+        self.workflowPreview = workflowPreview
     }
 
     init(from decoder: Decoder) throws {
@@ -46,6 +48,7 @@ struct Message: Identifiable, Codable {
         timestamp = try container.decode(Date.self, forKey: .timestamp)
         toolsUsed = try container.decodeIfPresent([ToolBadge].self, forKey: .toolsUsed) ?? []
         sources = try container.decodeIfPresent([ToolSource].self, forKey: .sources) ?? []
+        workflowPreview = try container.decodeIfPresent(WorkflowPreview.self, forKey: .workflowPreview)
     }
 }
 
@@ -333,6 +336,15 @@ struct ChatDetailView: View {
     private let tools: [any Tool]
     private let toolTracker: ToolUsageTracker
 
+    #if os(macOS)
+    private static let automatorIndex = AutomatorActionIndex()
+    private static let automatorActionCount: Int = {
+        let dir = URL(fileURLWithPath: "/System/Library/Automator")
+        let contents = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        return contents.filter { $0.pathExtension == "action" }.count
+    }()
+    #endif
+
     private static let instructions = """
 You are The Conductor — an intelligent intermediary that interprets human intent \
 and coordinates device capabilities to fulfill that intent.
@@ -376,7 +388,7 @@ The user specifies the outcome; you determine the path.
         self.chatManager = chatManager
 
         let tracker = ToolUsageTracker()
-        let tools: [any Tool] = [
+        var tools: [any Tool] = [
             WikipediaSearchTool(tracker: tracker),
             PubMedSearchTool(tracker: tracker),
             SemanticScholarSearchTool(tracker: tracker),
@@ -384,11 +396,25 @@ The user specifies the outcome; you determine the path.
             OpenAlexSearchTool(tracker: tracker),
             CrossRefSearchTool(tracker: tracker),
         ]
+
+        var sessionInstructions = Self.instructions
+        #if os(macOS)
+        tools.append(BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex) as any Tool)
+        let automatorCount = Self.automatorActionCount
+        sessionInstructions += """
+
+        \nOn macOS you can build Automator workflows. There are \(automatorCount) \
+        actions provided by the operating system. Only use the buildAutomatorWorkflow \
+        tool when the user asks you to create or build a workflow. For questions about \
+        Automator capabilities, answer directly without calling a tool.
+        """
+        #endif
+
         self.toolTracker = tracker
         self.tools = tools
         self._session = State(initialValue: LanguageModelSession(
             tools: tools,
-            instructions: Self.instructions
+            instructions: sessionInstructions
         ))
     }
     
@@ -603,12 +629,14 @@ The user specifies the outcome; you determine the path.
         if !streamingContent.isEmpty {
             let usedTools = await toolTracker.badgeSnapshot()
             let usedSources = await toolTracker.sourceSnapshot()
+            let workflow = await toolTracker.workflowPreviewSnapshot()
             let assistantMessage = Message(
                 content: streamingContent,
                 isUser: false,
                 timestamp: Date(),
                 toolsUsed: usedTools,
-                sources: usedSources
+                sources: usedSources,
+                workflowPreview: workflow
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)
@@ -683,6 +711,7 @@ struct MessageBubbleView: View {
     let message: Message
     var onRegenerate: (() -> Void)?
     @State private var showCopied = false
+    @State private var savedPath: String?
 
     var body: some View {
         HStack {
@@ -719,6 +748,12 @@ struct MessageBubbleView: View {
                         }
                     }
                 }
+
+                #if os(macOS)
+                if let preview = message.workflowPreview {
+                    WorkflowCardView(preview: preview, savedPath: $savedPath, onRegenerate: onRegenerate)
+                }
+                #endif
 
                 HStack(spacing: 6) {
                     Text(message.timestamp, style: .time)
@@ -774,6 +809,103 @@ struct MessageBubbleView: View {
         }
     }
 }
+
+#if os(macOS)
+struct WorkflowCardView: View {
+    let preview: WorkflowPreview
+    @Binding var savedPath: String?
+    var onRegenerate: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(preview.title, systemImage: "gearshape.2")
+                .font(.headline)
+
+            ForEach(Array(preview.steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .top, spacing: 6) {
+                    Text("\(index + 1).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, alignment: .trailing)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(step.actionName)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        if !step.parameterSummary.isEmpty {
+                            Text(step.parameterSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if index < preview.steps.count - 1 {
+                    HStack(spacing: 4) {
+                        Spacer().frame(width: 20)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(step.outputType)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+
+            Divider()
+
+            HStack {
+                if let savedPath {
+                    Label("Saved to \(savedPath)", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                } else {
+                    let fileExists = FileManager.default.fileExists(atPath: preview.tempFileURL.path)
+                    Button {
+                        saveWorkflow(from: preview.tempFileURL, suggestedName: preview.title)
+                    } label: {
+                        Label("Save .workflow", systemImage: "square.and.arrow.down")
+                            .font(.caption)
+                    }
+                    .disabled(!fileExists)
+
+                    if let onRegenerate {
+                        Button(action: onRegenerate) {
+                            Label("Regenerate", systemImage: "arrow.clockwise")
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+        .cornerRadius(12)
+    }
+
+    private func saveWorkflow(from tempURL: URL, suggestedName: String) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "workflow")!]
+        panel.nameFieldStringValue = "\(suggestedName).workflow"
+        panel.begin { response in
+            guard response == .OK, let destURL = panel.url else { return }
+            do {
+                if FileManager.default.fileExists(atPath: destURL.path) {
+                    try FileManager.default.removeItem(at: destURL)
+                }
+                try FileManager.default.copyItem(at: tempURL, to: destURL)
+                savedPath = destURL.path
+            } catch {
+                // File copy failed — the panel already shows errors for permission issues
+            }
+        }
+    }
+}
+#endif
 
 // MARK: - Markdown Text View
 
