@@ -336,6 +336,10 @@ struct ChatDetailView: View {
     private let tools: [any Tool]
     private let toolTracker: ToolUsageTracker
 
+    #if os(macOS)
+    private static let automatorIndex = AutomatorActionIndex()
+    #endif
+
     private static let instructions = """
 You are The Conductor — an intelligent intermediary that interprets human intent \
 and coordinates device capabilities to fulfill that intent.
@@ -379,7 +383,7 @@ The user specifies the outcome; you determine the path.
         self.chatManager = chatManager
 
         let tracker = ToolUsageTracker()
-        let tools: [any Tool] = [
+        var tools: [any Tool] = [
             WikipediaSearchTool(tracker: tracker),
             PubMedSearchTool(tracker: tracker),
             SemanticScholarSearchTool(tracker: tracker),
@@ -387,6 +391,12 @@ The user specifies the outcome; you determine the path.
             OpenAlexSearchTool(tracker: tracker),
             CrossRefSearchTool(tracker: tracker),
         ]
+        #if os(macOS)
+        tools.append(contentsOf: [
+            SearchAutomatorActionsTool(tracker: tracker, index: Self.automatorIndex),
+            BuildAutomatorWorkflowTool(tracker: tracker),
+        ] as [any Tool])
+        #endif
         self.toolTracker = tracker
         self.tools = tools
         self._session = State(initialValue: LanguageModelSession(
