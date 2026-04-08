@@ -392,10 +392,7 @@ The user specifies the outcome; you determine the path.
             CrossRefSearchTool(tracker: tracker),
         ]
         #if os(macOS)
-        tools.append(contentsOf: [
-            SearchAutomatorActionsTool(tracker: tracker, index: Self.automatorIndex),
-            BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex),
-        ] as [any Tool])
+        tools.append(BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex) as any Tool)
         #endif
         self.toolTracker = tracker
         self.tools = tools

@@ -62,6 +62,32 @@ actor AutomatorActionIndex {
         return actions.first { $0.name.lowercased() == name.lowercased() }?.bundleURL
     }
 
+    func actionInfo(forName name: String) -> AutomatorActionInfo? {
+        if !isLoaded {
+            loadIndex()
+        }
+        return actions.first { $0.name.lowercased() == name.lowercased() }
+    }
+
+    /// Compact catalog of all actions for use as LLM context.
+    func catalog() -> String {
+        if !isLoaded {
+            loadIndex()
+        }
+        var lines: [String] = []
+        for action in actions.sorted(by: { $0.name < $1.name }) {
+            let input = action.inputTypes.isEmpty ? "none" : action.inputTypes.joined(separator: ", ")
+            let output = action.outputTypes.isEmpty ? "none" : action.outputTypes.joined(separator: ", ")
+            let params = action.defaultParameters.keys.sorted().joined(separator: ", ")
+            var line = "- \(action.name) [\(input) → \(output)]"
+            if !params.isEmpty {
+                line += " params: \(params)"
+            }
+            lines.append(line)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private func loadIndex() {
         let automatorDir = URL(fileURLWithPath: "/System/Library/Automator")
         guard let contents = try? FileManager.default.contentsOfDirectory(
