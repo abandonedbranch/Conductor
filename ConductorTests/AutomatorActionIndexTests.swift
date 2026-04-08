@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Conductor
 
-@Suite("AutomatorActionIndex Tests")
+@Suite("AutomatorActionIndex Tests", .serialized)
 struct AutomatorActionIndexTests {
 
     @Test("Parses Info.plist dictionary into AutomatorActionInfo")
@@ -125,5 +125,26 @@ struct AutomatorActionIndexTests {
         let index = AutomatorActionIndex(preloaded: actions)
         let results = await index.search(query: "SCALE", inputType: nil, maxResults: 5)
         #expect(results.count == 1)
+    }
+
+    @Test("Name matches rank higher than description-only matches")
+    func searchRanksNameMatchesHigher() async {
+        let actions = [
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: [
+                "AMName": "Import Files into iPhoto",
+                "AMDescription": ["AMDSummary": "Imports images into iPhoto."],
+            ]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: [
+                "AMName": "Scale Images",
+            ]),
+            AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/c.action"), plist: [
+                "AMName": "Crop Images",
+            ]),
+        ]
+        let index = AutomatorActionIndex(preloaded: actions)
+        let results = await index.search(query: "images", inputType: nil, maxResults: 3)
+        #expect(results.count == 3)
+        // Description-only match ("Import Files into iPhoto") should be last
+        #expect(results[2].name == "Import Files into iPhoto")
     }
 }

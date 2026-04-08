@@ -17,23 +17,42 @@ actor AutomatorActionIndex {
             loadIndex()
         }
 
-        let queryLower = query.lowercased()
-        var results = actions
+        var candidates = actions
 
-        if !queryLower.isEmpty {
-            results = results.filter { action in
-                action.name.lowercased().contains(queryLower)
-                || action.category.lowercased().contains(queryLower)
-                || action.descriptionSummary.lowercased().contains(queryLower)
-                || action.keywords.contains { $0.lowercased().contains(queryLower) }
+        if let inputType {
+            candidates = candidates.filter { $0.inputTypes.contains(inputType) }
+        }
+
+        let queryLower = query.lowercased()
+
+        guard !queryLower.isEmpty else {
+            return Array(candidates.prefix(maxResults))
+        }
+
+        let terms = queryLower.split(separator: " ").map(String.init)
+
+        var scored: [(action: AutomatorActionInfo, score: Int)] = []
+        for action in candidates {
+            var score = 0
+            let nameLower = action.name.lowercased()
+            let descLower = action.descriptionSummary.lowercased()
+            let catLower = action.category.lowercased()
+            let kwLower = action.keywords.map { $0.lowercased() }
+
+            for term in terms {
+                if nameLower.contains(term) { score += 3 }
+                if kwLower.contains(where: { $0.contains(term) }) { score += 2 }
+                if descLower.contains(term) { score += 1 }
+                if catLower.contains(term) { score += 1 }
+            }
+
+            if score > 0 {
+                scored.append((action, score))
             }
         }
 
-        if let inputType {
-            results = results.filter { $0.inputTypes.contains(inputType) }
-        }
-
-        return Array(results.prefix(maxResults))
+        scored.sort { $0.score > $1.score }
+        return scored.prefix(maxResults).map(\.action)
     }
 
     private func loadIndex() {
