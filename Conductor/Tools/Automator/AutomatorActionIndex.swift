@@ -55,6 +55,13 @@ actor AutomatorActionIndex {
         return scored.prefix(maxResults).map(\.action)
     }
 
+    func bundleURL(forActionNamed name: String) -> URL? {
+        if !isLoaded {
+            loadIndex()
+        }
+        return actions.first { $0.name.lowercased() == name.lowercased() }?.bundleURL
+    }
+
     private func loadIndex() {
         let automatorDir = URL(fileURLWithPath: "/System/Library/Automator")
         guard let contents = try? FileManager.default.contentsOfDirectory(

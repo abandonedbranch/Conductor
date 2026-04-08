@@ -394,7 +394,7 @@ The user specifies the outcome; you determine the path.
         #if os(macOS)
         tools.append(contentsOf: [
             SearchAutomatorActionsTool(tracker: tracker, index: Self.automatorIndex),
-            BuildAutomatorWorkflowTool(tracker: tracker),
+            BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex),
         ] as [any Tool])
         #endif
         self.toolTracker = tracker

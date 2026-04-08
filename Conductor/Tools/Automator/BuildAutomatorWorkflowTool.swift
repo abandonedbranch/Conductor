@@ -6,9 +6,16 @@ import FoundationModels
 @available(macOS 26.0, *)
 struct BuildAutomatorWorkflowTool: BadgedTool {
     let name = "buildAutomatorWorkflow"
-    let description = "Build a macOS Automator workflow from a list of actions. IMPORTANT: You MUST call searchAutomatorActions first to get the exact bundle paths — do not guess paths. Search for each type of action needed (e.g. search for 'ask finder' to get a file picker, search for 'scale' to get image resize). Use the bundle paths from search results."
+    let description = "Build a macOS Automator workflow from action names. Use searchAutomatorActions first to find exact action names. Pass the action names exactly as returned by search."
     let tracker: ToolUsageTracker
     let badge = ToolBadge(icon: "gear.badge", tint: .gray, label: "Automator")
+
+    private let index: AutomatorActionIndex
+
+    init(tracker: ToolUsageTracker, index: AutomatorActionIndex) {
+        self.tracker = tracker
+        self.index = index
+    }
 
     @Generable
     struct Arguments {
@@ -21,10 +28,10 @@ struct BuildAutomatorWorkflowTool: BadgedTool {
 
     @Generable
     struct WorkflowStep {
-        @Guide(description: "Full path to the .action bundle (from searchAutomatorActions results)")
-        var actionBundlePath: String
+        @Guide(description: "The action name exactly as shown by searchAutomatorActions (e.g. \"Scale Images\")")
+        var actionName: String
 
-        @Guide(description: "Parameter overrides. Keys must match parameter names from searchAutomatorActions results.")
+        @Guide(description: "Parameter overrides as key-value pairs")
         var parameters: [ParameterPair]?
     }
 
@@ -45,10 +52,13 @@ struct BuildAutomatorWorkflowTool: BadgedTool {
         var errors: [String] = []
 
         for (i, step) in arguments.steps.enumerated() {
-            let bundleURL = URL(fileURLWithPath: step.actionBundlePath)
+            guard let bundleURL = await index.bundleURL(forActionNamed: step.actionName) else {
+                errors.append("Step \(i + 1): No action found named \"\(step.actionName)\". Use searchAutomatorActions to find the correct name.")
+                continue
+            }
 
             guard let action = try? AMAction(contentsOf: bundleURL) else {
-                errors.append("Step \(i + 1): Could not load action at \(step.actionBundlePath). Skipping.")
+                errors.append("Step \(i + 1): Could not load action \"\(step.actionName)\". Skipping.")
                 continue
             }
 
