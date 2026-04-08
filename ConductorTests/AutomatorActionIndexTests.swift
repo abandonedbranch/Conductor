@@ -68,7 +68,8 @@ struct AutomatorActionIndexTests {
             AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: ["AMName": "Copy Finder Items"]),
             AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/c.action"), plist: ["AMName": "Move Finder Items"]),
         ]
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "scale", inputType: nil, maxResults: 5)
         #expect(results.count == 1)
         #expect(results[0].name == "Scale Images")
@@ -83,7 +84,8 @@ struct AutomatorActionIndexTests {
             ]),
             AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/b.action"), plist: ["AMName": "Ask for Text"]),
         ]
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "resize", inputType: nil, maxResults: 5)
         #expect(results.count == 1)
         #expect(results[0].name == "Scale Images")
@@ -101,7 +103,8 @@ struct AutomatorActionIndexTests {
                 "AMAccepts": ["Types": ["com.adobe.pdf"], "Container": "List"],
             ]),
         ]
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "", inputType: "public.image", maxResults: 5)
         #expect(results.count == 1)
         #expect(results[0].name == "Scale Images")
@@ -112,7 +115,8 @@ struct AutomatorActionIndexTests {
         let actions = (1...10).map { i in
             AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/\(i).action"), plist: ["AMName": "Action \(i)"])
         }
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "action", inputType: nil, maxResults: 3)
         #expect(results.count == 3)
     }
@@ -122,7 +126,8 @@ struct AutomatorActionIndexTests {
         let actions = [
             AutomatorActionInfo(bundleURL: URL(fileURLWithPath: "/a.action"), plist: ["AMName": "Scale Images"]),
         ]
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "SCALE", inputType: nil, maxResults: 5)
         #expect(results.count == 1)
     }
@@ -141,7 +146,8 @@ struct AutomatorActionIndexTests {
                 "AMName": "Crop Images",
             ]),
         ]
-        let index = AutomatorActionIndex(preloaded: actions)
+        let index = AutomatorActionIndex()
+        await index.loadForTesting(actions)
         let results = await index.search(query: "images", inputType: nil, maxResults: 3)
         #expect(results.count == 3)
         // Description-only match ("Import Files into iPhoto") should be last

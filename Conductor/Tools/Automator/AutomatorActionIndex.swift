@@ -6,8 +6,14 @@ actor AutomatorActionIndex {
 
     init() {}
 
-    /// Test-only initializer with preloaded actions.
-    init(preloaded: [AutomatorActionInfo]) {
+    /// Number of available Automator actions (triggers lazy load if needed).
+    var actionCount: Int {
+        if !isLoaded { loadIndex() }
+        return actions.count
+    }
+
+    /// Load test data on the actor's executor (avoids nonisolated init race).
+    func loadForTesting(_ preloaded: [AutomatorActionInfo]) {
         actions = preloaded
         isLoaded = true
     }

@@ -338,6 +338,11 @@ struct ChatDetailView: View {
 
     #if os(macOS)
     private static let automatorIndex = AutomatorActionIndex()
+    private static let automatorActionCount: Int = {
+        let dir = URL(fileURLWithPath: "/System/Library/Automator")
+        let contents = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        return contents.filter { $0.pathExtension == "action" }.count
+    }()
     #endif
 
     private static let instructions = """
@@ -391,14 +396,25 @@ The user specifies the outcome; you determine the path.
             OpenAlexSearchTool(tracker: tracker),
             CrossRefSearchTool(tracker: tracker),
         ]
+
+        var sessionInstructions = Self.instructions
         #if os(macOS)
         tools.append(BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex) as any Tool)
+        let automatorCount = Self.automatorActionCount
+        sessionInstructions += """
+
+        \nOn macOS you can build Automator workflows. There are \(automatorCount) \
+        actions provided by the operating system. Only use the buildAutomatorWorkflow \
+        tool when the user asks you to create or build a workflow. For questions about \
+        Automator capabilities, answer directly without calling a tool.
+        """
         #endif
+
         self.toolTracker = tracker
         self.tools = tools
         self._session = State(initialValue: LanguageModelSession(
             tools: tools,
-            instructions: Self.instructions
+            instructions: sessionInstructions
         ))
     }
     
