@@ -6,7 +6,7 @@ import FoundationModels
 @available(macOS 26.0, *)
 struct BuildAutomatorWorkflowTool: BadgedTool {
     let name = "buildAutomatorWorkflow"
-    let description = "Build a macOS Automator workflow from a list of actions and parameters. Call searchAutomatorActions first to discover available actions and their parameters. Returns a workflow preview the user can save as a .workflow file."
+    let description = "Build a macOS Automator workflow from a list of actions. IMPORTANT: You MUST call searchAutomatorActions first to get the exact bundle paths — do not guess paths. Search for each type of action needed (e.g. search for 'ask finder' to get a file picker, search for 'scale' to get image resize). Use the bundle paths from search results."
     let tracker: ToolUsageTracker
     let badge = ToolBadge(icon: "gear.badge", tint: .gray, label: "Automator")
 

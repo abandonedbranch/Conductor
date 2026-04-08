@@ -5,7 +5,7 @@ import FoundationModels
 @available(macOS 26.0, *)
 struct SearchAutomatorActionsTool: BadgedTool {
     let name = "searchAutomatorActions"
-    let description = "Search for macOS Automator actions by keyword. Use this to discover available actions before building a workflow. Returns action names, descriptions, input/output types, and configurable parameters."
+    let description = "Search for macOS Automator actions by keyword. You MUST call this before buildAutomatorWorkflow to get exact bundle paths and parameter names. Keep responses concise — summarize results briefly."
     let tracker: ToolUsageTracker
     let badge = ToolBadge(icon: "gear.badge", tint: .gray, label: "Automator")
 
@@ -24,14 +24,14 @@ struct SearchAutomatorActionsTool: BadgedTool {
         @Guide(description: "Optional UTI filter to find actions that accept a specific input type (e.g. public.image)")
         var inputType: String?
 
-        @Guide(description: "Maximum number of results to return (default 5)")
+        @Guide(description: "Maximum number of results to return (default 3)")
         var maxResults: Int?
     }
 
     func call(arguments: Arguments) async -> String {
         await tracker.record(badge)
 
-        let max = arguments.maxResults ?? 5
+        let max = arguments.maxResults ?? 3
         let query = arguments.searchQuery
         let results = await index.search(query: query, inputType: arguments.inputType, maxResults: max)
 
@@ -39,20 +39,14 @@ struct SearchAutomatorActionsTool: BadgedTool {
             return "No Automator actions found matching \"\(query)\". Try different keywords."
         }
 
-        var lines = ["Automator actions matching \"\(query)\":\n"]
+        var lines = ["Found \(results.count) actions:\n"]
         for (i, action) in results.enumerated() {
-            let params = action.defaultParameters.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
-            let inputDesc = action.inputTypes.isEmpty ? "None" : "\(action.inputTypes.joined(separator: ", ")) (\(action.inputContainer))"
-            let outputDesc = action.outputTypes.isEmpty ? "None" : "\(action.outputTypes.joined(separator: ", ")) (\(action.outputContainer))"
-
-            lines.append("""
-                \(i + 1). \(action.name) (\(action.category))
-                   Description: \(action.descriptionSummary.isEmpty ? "No description" : action.descriptionSummary)
-                   Accepts: \(inputDesc)
-                   Provides: \(outputDesc)
-                   Parameters: \(params.isEmpty ? "None" : params)
-                   Bundle: \(action.bundleURL.path)
-                """)
+            let paramKeys = action.defaultParameters.keys.sorted().joined(separator: ", ")
+            lines.append("\(i + 1). \(action.name) — \(action.descriptionSummary.isEmpty ? "No description" : action.descriptionSummary)")
+            lines.append("   Bundle: \(action.bundleURL.path)")
+            if !paramKeys.isEmpty {
+                lines.append("   Params: \(paramKeys)")
+            }
         }
 
         return lines.joined(separator: "\n")
