@@ -338,49 +338,52 @@ struct ChatDetailView: View {
 
     #if os(macOS)
     private static let automatorIndex = AutomatorActionIndex()
-    private static let automatorActionCount: Int = {
-        let dir = URL(fileURLWithPath: "/System/Library/Automator")
-        let contents = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
-        return contents.filter { $0.pathExtension == "action" }.count
-    }()
+    #endif
+
+    private static func searchCapabilities(tracker: ToolUsageTracker) -> [Capability] {
+        let searchTools: [(id: String, name: String, keywords: [String], description: String, tool: any BadgedTool)] = [
+            ("search.pubmed", "PubMed", ["biomedical", "clinical", "medical", "health", "life science", "pubmed"], "Biomedical and clinical research papers", PubMedSearchTool(tracker: tracker)),
+            ("search.wikipedia", "Wikipedia", ["general", "knowledge", "history", "overview", "encyclopedia", "wikipedia"], "General knowledge and encyclopedic information", WikipediaSearchTool(tracker: tracker)),
+            ("search.arxiv", "arXiv", ["physics", "math", "computer science", "preprint", "machine learning", "arxiv"], "Cutting-edge preprints in physics, math, and CS", ArXivSearchTool(tracker: tracker)),
+            ("search.semantic", "Semantic Scholar", ["academic", "scholarly", "citation", "cross-disciplinary", "semantic scholar"], "Cross-disciplinary academic research", SemanticScholarSearchTool(tracker: tracker)),
+            ("search.openalex", "OpenAlex", ["bibliometric", "citation data", "scholarly works", "openalex"], "Scholarly works with citation and bibliometric data", OpenAlexSearchTool(tracker: tracker)),
+            ("search.crossref", "CrossRef", ["doi", "publisher", "citation count", "crossref", "metadata"], "DOI metadata, publisher info, and citation counts", CrossRefSearchTool(tracker: tracker)),
+        ]
+
+        return searchTools.map { entry in
+            let tool = entry.tool
+            return Capability(
+                id: entry.id,
+                name: entry.name,
+                description: entry.description,
+                keywords: entry.keywords
+            ) { request in
+                await SearchCapabilityAdapter.execute(tool: tool, query: request.extractedGoal, tracker: tracker)
+            }
+        }
+    }
+
+    #if os(macOS)
+    private static func automatorCapability(tracker: ToolUsageTracker, index: AutomatorActionIndex) -> Capability {
+        Capability(
+            id: "automator.build",
+            name: "Build Automator Workflow",
+            description: "Build a macOS Automator .workflow file from a description",
+            keywords: ["automator", "workflow", "automate", "macro", "build workflow"]
+        ) { request in
+            let tool = BuildAutomatorWorkflowTool(tracker: tracker, index: index)
+            let args = BuildAutomatorWorkflowTool.Arguments(workflowDescription: request.extractedGoal)
+            return await tool.call(arguments: args)
+        }
+    }
     #endif
 
     private static let instructions = """
-You are The Conductor — an intelligent intermediary that interprets human intent \
-and coordinates device capabilities to fulfill that intent.
-
-Your role is orchestration, not assistance. When given a request:
-- Infer the underlying goal, not just the surface request
-- Identify what system capabilities are needed to achieve it
-- Coordinate actions across multiple functions when necessary
-- Explain your reasoning and what you're doing — transparency is non-negotiable
-
-IMPORTANT RULES:
-- When you do not know something, ALWAYS use one of your available search tools to \
-  look it up. Do not guess. Do not apologize. Search first.
-- If the user asks a factual question, use a tool before responding.
-- Use the most relevant tool for the domain. Combine multiple tools when appropriate.
-- Always synthesize results into a coherent answer rather than dumping raw data.
-- If a search fails, tell the user exactly what you searched for and that no results \
-  were found. Suggest a different search term.
-- Never say "I am unable to provide information." Instead, explain specifically what \
-  you tried and why it did not work.
-- When the user asks for research, medical literature, academic papers, or scientific \
-  information, you MUST call the appropriate research tool. Do not fabricate results.
-
-Core principles:
-- Clarity over cleverness: Use direct language. No marketing speak.
-- Systems thinking: Consider workflow and coordination, not just single actions.
-- Minimal friction: Extend the user's thinking; don't make them operate a tool.
-- Technical honesty: Acknowledge your limits specifically — never give vague refusals.
-- Privacy: You process locally. The search tools access the internet to \
-  retrieve information — be transparent when using them.
-
-When you act, be explicit about what you're doing and why. The user should always \
-understand your decision-making process.
-
-You sit between what users want to accomplish and what their device can do. \
-The user specifies the outcome; you determine the path.
+You are The Conductor. You orchestrate device capabilities to fulfill user intent.
+Use action to do. Use library to know. Use manual to explain yourself.
+Respond tersely. One sentence when one sentence suffices.
+If a tool errors, explain in one sentence. Do not apologize.
+Never fabricate information. If you lack data, say so.
 """
 
     init(chat: Chat, chatManager: ChatManager) {
@@ -388,33 +391,25 @@ The user specifies the outcome; you determine the path.
         self.chatManager = chatManager
 
         let tracker = ToolUsageTracker()
-        var tools: [any Tool] = [
-            WikipediaSearchTool(tracker: tracker),
-            PubMedSearchTool(tracker: tracker),
-            SemanticScholarSearchTool(tracker: tracker),
-            ArXivSearchTool(tracker: tracker),
-            OpenAlexSearchTool(tracker: tracker),
-            CrossRefSearchTool(tracker: tracker),
-        ]
 
-        var sessionInstructions = Self.instructions
+        var capabilities = Self.searchCapabilities(tracker: tracker)
         #if os(macOS)
-        tools.append(BuildAutomatorWorkflowTool(tracker: tracker, index: Self.automatorIndex) as any Tool)
-        let automatorCount = Self.automatorActionCount
-        sessionInstructions += """
-
-        \nOn macOS you can build Automator workflows. There are \(automatorCount) \
-        actions provided by the operating system. Only use the buildAutomatorWorkflow \
-        tool when the user asks you to create or build a workflow. For questions about \
-        Automator capabilities, answer directly without calling a tool.
-        """
+        capabilities.append(Self.automatorCapability(tracker: tracker, index: Self.automatorIndex))
         #endif
+
+        let registry = CapabilityRegistry(capabilities: capabilities)
+
+        let tools: [any Tool] = [
+            ActionTool(registry: registry, tracker: tracker),
+            LibraryTool(registry: registry, tracker: tracker),
+            ManualTool(),
+        ]
 
         self.toolTracker = tracker
         self.tools = tools
         self._session = State(initialValue: LanguageModelSession(
             tools: tools,
-            instructions: sessionInstructions
+            instructions: Self.instructions
         ))
     }
     
@@ -581,7 +576,7 @@ The user specifies the outcome; you determine the path.
                 streamingContent = ""
                 await toolTracker.reset()
                 try await streamResponse(
-                    to: "\(userMessageContent)\n\n(If you cannot answer from memory, use one of your search tools to look it up. Do not apologize — search or explain what you would need to answer.)"
+                    to: "\(userMessageContent)\n\n(Use library to search. Use manual to describe capabilities. Do not apologize.)"
                 )
             }
         } catch {
