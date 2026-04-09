@@ -38,6 +38,7 @@ actor ToolUsageTracker {
     private var badges: Set<ToolBadge> = []
     private var sources: [ToolSource] = []
     private var workflowPreview: WorkflowPreview?
+    private var webReaderStatus: WebReaderStatus?
 
     func record(_ badge: ToolBadge) {
         badges.insert(badge)
@@ -53,6 +54,7 @@ actor ToolUsageTracker {
         badges.removeAll()
         sources.removeAll()
         workflowPreview = nil
+        webReaderStatus = nil
     }
 
     func badgeSnapshot() -> [ToolBadge] {
@@ -69,6 +71,14 @@ actor ToolUsageTracker {
 
     func workflowPreviewSnapshot() -> WorkflowPreview? {
         workflowPreview
+    }
+
+    func setWebReaderStatus(_ status: WebReaderStatus) {
+        webReaderStatus = status
+    }
+
+    func webReaderStatusSnapshot() -> WebReaderStatus? {
+        webReaderStatus
     }
 }
 

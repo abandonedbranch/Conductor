@@ -629,13 +629,15 @@ Never fabricate information. If you lack data, say so.
             let usedTools = await toolTracker.badgeSnapshot()
             let usedSources = await toolTracker.sourceSnapshot()
             let workflow = await toolTracker.workflowPreviewSnapshot()
+            let webStatus = await toolTracker.webReaderStatusSnapshot()
             let assistantMessage = Message(
                 content: streamingContent,
                 isUser: false,
                 timestamp: Date(),
                 toolsUsed: usedTools,
                 sources: usedSources,
-                workflowPreview: workflow
+                workflowPreview: workflow,
+                webReaderStatus: webStatus
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)

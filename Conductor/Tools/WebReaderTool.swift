@@ -20,15 +20,25 @@ struct WebReaderTool: BadgedTool {
 
         let url = try validateAndUnwrap(arguments.url)
 
+        await tracker.setWebReaderStatus(.loading(url))
+
         let service = await WebReaderService()
-        let result = try await service.read(url: url)
+        let result: WebReaderResult
+        do {
+            result = try await service.read(url: url)
+        } catch {
+            await tracker.setWebReaderStatus(.error(error.localizedDescription))
+            throw error
+        }
 
         await tracker.addSource(ToolSource(title: result.title, url: result.url.absoluteString))
 
         if result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            await tracker.setWebReaderStatus(.error("Page had no text content"))
             throw WebReaderError.emptyContent(url)
         }
 
+        await tracker.setWebReaderStatus(.success(result))
         return result.text
     }
 
