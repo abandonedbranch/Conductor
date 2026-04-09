@@ -28,6 +28,10 @@ Open `Conductor.xcodeproj` to build and run.
 - Never store or transmit user data to third-party services without clear, visible user consent.
 - When network access is necessary, surface it to the user — no silent background calls.
 
+## UX
+
+- Every user-initiated action must provide subtle, visual feedback indicating the state of the request (loading, in-progress, success, error). No silent operations.
+
 ## Architecture
 
 - Follow the pattern: **View → Model → Service**. Views observe models; models call services; services own I/O.

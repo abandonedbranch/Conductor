@@ -10,7 +10,7 @@ struct Chat: Identifiable, Hashable, Codable {
     var timestamp: Date
     
     init(id: UUID = UUID(), title: String, lastMessage: String, timestamp: Date) {
-        self.id = id
+        self.id = id 
         self.title = title
         self.lastMessage = lastMessage
         self.timestamp = timestamp
@@ -25,12 +25,13 @@ struct Message: Identifiable, Codable {
     var toolsUsed: [ToolBadge]
     var sources: [ToolSource]
     var workflowPreview: WorkflowPreview?
+    var webReaderStatus: WebReaderStatus?
 
     enum CodingKeys: String, CodingKey {
-        case id, content, isUser, timestamp, toolsUsed, sources, workflowPreview
+        case id, content, isUser, timestamp, toolsUsed, sources, workflowPreview, webReaderStatus
     }
 
-    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = [], workflowPreview: WorkflowPreview? = nil) {
+    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = [], workflowPreview: WorkflowPreview? = nil, webReaderStatus: WebReaderStatus? = nil) {
         self.id = id
         self.content = content
         self.isUser = isUser
@@ -38,6 +39,7 @@ struct Message: Identifiable, Codable {
         self.toolsUsed = toolsUsed
         self.sources = sources
         self.workflowPreview = workflowPreview
+        self.webReaderStatus = webReaderStatus
     }
 
     init(from decoder: Decoder) throws {
@@ -49,6 +51,7 @@ struct Message: Identifiable, Codable {
         toolsUsed = try container.decodeIfPresent([ToolBadge].self, forKey: .toolsUsed) ?? []
         sources = try container.decodeIfPresent([ToolSource].self, forKey: .sources) ?? []
         workflowPreview = try container.decodeIfPresent(WorkflowPreview.self, forKey: .workflowPreview)
+        webReaderStatus = try container.decodeIfPresent(WebReaderStatus.self, forKey: .webReaderStatus)
     }
 }
 
@@ -380,7 +383,7 @@ struct ChatDetailView: View {
 
     private static let instructions = """
 You are The Conductor. You orchestrate device capabilities to fulfill user intent.
-Use action to do. Use library to know. Use manual to explain yourself.
+Use action to do. Use library to know. Use manual to explain yourself. Use readWeb to read web pages.
 Respond tersely. One sentence when one sentence suffices.
 If a tool errors, explain in one sentence. Do not apologize.
 Never fabricate information. If you lack data, say so.
@@ -403,6 +406,7 @@ Never fabricate information. If you lack data, say so.
             ActionTool(registry: registry, tracker: tracker),
             LibraryTool(registry: registry, tracker: tracker),
             ManualTool(),
+            WebReaderTool(tracker: tracker),
         ]
 
         self.toolTracker = tracker
@@ -625,13 +629,15 @@ Never fabricate information. If you lack data, say so.
             let usedTools = await toolTracker.badgeSnapshot()
             let usedSources = await toolTracker.sourceSnapshot()
             let workflow = await toolTracker.workflowPreviewSnapshot()
+            let webStatus = await toolTracker.webReaderStatusSnapshot()
             let assistantMessage = Message(
                 content: streamingContent,
                 isUser: false,
                 timestamp: Date(),
                 toolsUsed: usedTools,
                 sources: usedSources,
-                workflowPreview: workflow
+                workflowPreview: workflow,
+                webReaderStatus: webStatus
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)
@@ -749,6 +755,10 @@ struct MessageBubbleView: View {
                     WorkflowCardView(preview: preview, savedPath: $savedPath, onRegenerate: onRegenerate)
                 }
                 #endif
+
+                if let webStatus = message.webReaderStatus {
+                    WebReaderCardView(status: webStatus)
+                }
 
                 HStack(spacing: 6) {
                     Text(message.timestamp, style: .time)
