@@ -4,11 +4,11 @@ import FoundationModels
 // MARK: - ArXiv Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct ArXivSearchTool: BadgedTool {
+struct ArXivSearchTool: AgentTool {
     let name = "searchArXiv"
     let description = "Search arXiv for cutting-edge preprints in physics, math, computer science, and quantitative biology."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "doc.text", tint: .green, label: "arXiv")
+    let purpose: AgentPurpose = .research
+    let friendlyName = "arXiv"
 
     @Generable
     struct Arguments {
@@ -20,8 +20,6 @@ struct ArXivSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         let max = arguments.maxResults ?? 3
         let query = arguments.searchQuery
 
@@ -30,10 +28,6 @@ struct ArXivSearchTool: BadgedTool {
 
             guard !entries.isEmpty else {
                 return "arXiv results for \"\(query)\":\n\nNo results found."
-            }
-
-            for entry in entries {
-                await tracker.addSource(ToolSource(title: entry.title, url: entry.id))
             }
 
             var lines = ["arXiv results for \"\(query)\":\n"]

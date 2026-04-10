@@ -4,11 +4,11 @@ import FoundationModels
 // MARK: - OpenAlex Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct OpenAlexSearchTool: BadgedTool {
+struct OpenAlexSearchTool: AgentTool {
     let name = "searchOpenAlex"
     let description = "Search OpenAlex for scholarly works with citation data. Good for cross-disciplinary search and bibliometric analysis."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "books.vertical", tint: .purple, label: "OpenAlex")
+    let purpose: AgentPurpose = .research
+    let friendlyName = "OpenAlex"
 
     @Generable
     struct Arguments {
@@ -20,17 +20,10 @@ struct OpenAlexSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         let limit = arguments.maxResults ?? 3
 
         do {
             let works = try await fetchWorks(query: arguments.searchQuery, limit: limit)
-
-            for work in works {
-                let sourceURL = work.doi ?? work.id
-                await tracker.addSource(ToolSource(title: work.title, url: sourceURL))
-            }
 
             var lines = ["OpenAlex results for \"\(arguments.searchQuery)\":\n"]
 
