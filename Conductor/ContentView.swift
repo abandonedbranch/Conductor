@@ -5,12 +5,12 @@ import FoundationModels
 
 struct Chat: Identifiable, Hashable, Codable {
     let id: UUID
-    var title: String  // Changed to var so it can be updated
+    var title: String
     var lastMessage: String
     var timestamp: Date
-    
+
     init(id: UUID = UUID(), title: String, lastMessage: String, timestamp: Date) {
-        self.id = id 
+        self.id = id
         self.title = title
         self.lastMessage = lastMessage
         self.timestamp = timestamp
@@ -22,24 +22,20 @@ struct Message: Identifiable, Codable {
     let content: String
     let isUser: Bool
     let timestamp: Date
-    var toolsUsed: [ToolBadge]
     var sources: [ToolSource]
-    var workflowPreview: WorkflowPreview?
-    var webReaderStatus: WebReaderStatus?
+    var narrationLog: [NarrationEvent]
 
     enum CodingKeys: String, CodingKey {
-        case id, content, isUser, timestamp, toolsUsed, sources, workflowPreview, webReaderStatus
+        case id, content, isUser, timestamp, sources, narrationLog
     }
 
-    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, toolsUsed: [ToolBadge] = [], sources: [ToolSource] = [], workflowPreview: WorkflowPreview? = nil, webReaderStatus: WebReaderStatus? = nil) {
+    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, sources: [ToolSource] = [], narrationLog: [NarrationEvent] = []) {
         self.id = id
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
-        self.toolsUsed = toolsUsed
         self.sources = sources
-        self.workflowPreview = workflowPreview
-        self.webReaderStatus = webReaderStatus
+        self.narrationLog = narrationLog
     }
 
     init(from decoder: Decoder) throws {
@@ -48,10 +44,8 @@ struct Message: Identifiable, Codable {
         content = try container.decode(String.self, forKey: .content)
         isUser = try container.decode(Bool.self, forKey: .isUser)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
-        toolsUsed = try container.decodeIfPresent([ToolBadge].self, forKey: .toolsUsed) ?? []
         sources = try container.decodeIfPresent([ToolSource].self, forKey: .sources) ?? []
-        workflowPreview = try container.decodeIfPresent(WorkflowPreview.self, forKey: .workflowPreview)
-        webReaderStatus = try container.decodeIfPresent(WebReaderStatus.self, forKey: .webReaderStatus)
+        narrationLog = try container.decodeIfPresent([NarrationEvent].self, forKey: .narrationLog) ?? []
     }
 }
 
@@ -61,31 +55,31 @@ struct Message: Identifiable, Codable {
 class ChatManager {
     var chats: [Chat] = []
     var chatMessages: [UUID: [Message]] = [:]
-    
+
     private let chatsKey = "conductor.savedChats"
     private let messagesKey = "conductor.savedMessages"
     private let lastSelectedChatKey = "conductor.lastSelectedChat"
-    
+
     init() {
         loadChats()
     }
-    
+
     func saveLastSelectedChat(_ chatId: UUID?) {
-        if let chatId = chatId {
+        if let chatId {
             UserDefaults.standard.set(chatId.uuidString, forKey: lastSelectedChatKey)
         } else {
             UserDefaults.standard.removeObject(forKey: lastSelectedChatKey)
         }
     }
-    
+
     func loadLastSelectedChat() -> Chat? {
         guard let uuidString = UserDefaults.standard.string(forKey: lastSelectedChatKey),
               let uuid = UUID(uuidString: uuidString) else {
             return nil
         }
-        return chats.first(where: { $0.id == uuid })
+        return chats.first { $0.id == uuid }
     }
-    
+
     func createNewChat() -> Chat {
         let newChat = Chat(
             title: "New Conversation",
@@ -97,41 +91,38 @@ class ChatManager {
         saveChats()
         return newChat
     }
-    
+
     func addMessage(_ message: Message, to chatId: UUID) {
         if chatMessages[chatId] == nil {
             chatMessages[chatId] = []
         }
         chatMessages[chatId]?.append(message)
-        
-        // Update the chat's last message and timestamp
+
         if let index = chats.firstIndex(where: { $0.id == chatId }) {
             chats[index].lastMessage = message.content
             chats[index].timestamp = message.timestamp
-            
-            // Generate a title from the first user message if still default
+
             if chats[index].title == "New Conversation" && message.isUser {
                 chats[index].title = generateTitle(from: message.content)
             }
         }
-        
+
         saveChats()
     }
-    
+
     func getMessages(for chatId: UUID) -> [Message] {
-        return chatMessages[chatId] ?? []
+        chatMessages[chatId] ?? []
     }
-    
+
     private func generateTitle(from message: String) -> String {
         let maxLength = 50
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.count <= maxLength {
             return trimmed
         }
-        let truncated = String(trimmed.prefix(maxLength))
-        return truncated + "..."
+        return String(trimmed.prefix(maxLength)) + "..."
     }
-    
+
     private func saveChats() {
         if let encoded = try? JSONEncoder().encode(chats) {
             UserDefaults.standard.set(encoded, forKey: chatsKey)
@@ -140,31 +131,27 @@ class ChatManager {
             UserDefaults.standard.set(encoded, forKey: messagesKey)
         }
     }
-    
+
     func deleteChat(_ chat: Chat) {
-        // Remove the chat
-        chats.removeAll(where: { $0.id == chat.id })
-        
-        // Remove associated messages
+        chats.removeAll { $0.id == chat.id }
         chatMessages.removeValue(forKey: chat.id)
-        
-        // Clear last selected chat if this was it
+
         if let lastSelectedUUID = UserDefaults.standard.string(forKey: lastSelectedChatKey),
            let uuid = UUID(uuidString: lastSelectedUUID),
            uuid == chat.id {
             UserDefaults.standard.removeObject(forKey: lastSelectedChatKey)
         }
-        
+
         saveChats()
     }
-    
+
     func deleteChats(at offsets: IndexSet) {
         let chatsToDelete = offsets.map { chats[$0] }
         for chat in chatsToDelete {
             deleteChat(chat)
         }
     }
-    
+
     private func loadChats() {
         if let data = UserDefaults.standard.data(forKey: chatsKey),
            let decoded = try? JSONDecoder().decode([Chat].self, from: data) {
@@ -182,17 +169,15 @@ class ChatManager {
 struct ContentView: View {
     @State private var selectedChat: Chat?
     @State private var chatManager = ChatManager()
-    
+
     var body: some View {
         NavigationSplitView {
-            // Sidebar
             ChatSidebarView(chatManager: chatManager, selectedChat: $selectedChat)
         } detail: {
-            // Main chat area
             if let chat = selectedChat {
                 if #available(iOS 19.0, macOS 26.0, *) {
                     ChatDetailView(chat: chat, chatManager: chatManager)
-                        .id(chat.id) // Force view to recreate when chat changes
+                        .id(chat.id)
                 } else {
                     UnsupportedOSView()
                 }
@@ -201,13 +186,11 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Load the last selected chat on startup
             if selectedChat == nil {
                 selectedChat = chatManager.loadLastSelectedChat()
             }
         }
         .onChange(of: selectedChat) { _, newChat in
-            // Save the selected chat whenever it changes
             chatManager.saveLastSelectedChat(newChat?.id)
         }
     }
@@ -218,7 +201,7 @@ struct ContentView: View {
 struct ChatSidebarView: View {
     let chatManager: ChatManager
     @Binding var selectedChat: Chat?
-    
+
     var body: some View {
         List(selection: $selectedChat) {
             ForEach(chatManager.chats) { chat in
@@ -240,13 +223,11 @@ struct ChatSidebarView: View {
                     }
             }
             .onDelete { indexSet in
-                // This handles keyboard delete on macOS
-                if let selectedChat = selectedChat,
+                if let selectedChat,
                    let index = chatManager.chats.firstIndex(where: { $0.id == selectedChat.id }),
                    indexSet.contains(index) {
                     self.selectedChat = nil
                 }
-                
                 chatManager.deleteChats(at: indexSet)
             }
         }
@@ -265,13 +246,11 @@ struct ChatSidebarView: View {
             }
         }
     }
-    
+
     private func deleteChat(_ chat: Chat) {
-        // Clear selection if we're deleting the selected chat
         if selectedChat?.id == chat.id {
             selectedChat = nil
         }
-        
         chatManager.deleteChat(chat)
     }
 }
@@ -280,33 +259,31 @@ struct ChatSidebarView: View {
 
 struct ChatRowView: View {
     let chat: Chat
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(chat.title)
                 .font(.headline)
                 .lineLimit(1)
-            
+
             Text(chat.lastMessage)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
-            
+
             Text(relativeTimeString(from: chat.timestamp))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
     }
-    
+
     private func relativeTimeString(from date: Date) -> String {
-        let now = Date()
-        let interval = now.timeIntervalSince(date)
-        
+        let interval = Date().timeIntervalSince(date)
         let minutes = Int(interval / 60)
         let hours = Int(interval / 3600)
         let days = Int(interval / 86400)
-        
+
         if interval < 60 {
             return "Just now"
         } else if minutes < 60 {
@@ -327,122 +304,53 @@ struct ChatRowView: View {
 struct ChatDetailView: View {
     let chat: Chat
     let chatManager: ChatManager
-    
+
     @State private var messageText = ""
     @State private var messages: [Message] = []
     @State private var isResponding = false
-    @State private var streamingContent = ""
     @State private var modelAvailability: SystemLanguageModel.Availability = .unavailable(.modelNotReady)
-    @State private var session: LanguageModelSession
+    @State private var orchestrator: ConductorOrchestrator
 
     private let model = SystemLanguageModel.default
-    private let tools: [any Tool]
-    private let toolTracker: ToolUsageTracker
-
-    #if os(macOS)
-    private static let automatorIndex = AutomatorActionIndex()
-    #endif
-
-    private static func searchCapabilities(tracker: ToolUsageTracker) -> [Capability] {
-        let searchTools: [(id: String, name: String, keywords: [String], description: String, tool: any BadgedTool)] = [
-            ("search.pubmed", "PubMed", ["biomedical", "clinical", "medical", "health", "life science", "pubmed"], "Biomedical and clinical research papers", PubMedSearchTool(tracker: tracker)),
-            ("search.wikipedia", "Wikipedia", ["general", "knowledge", "history", "overview", "encyclopedia", "wikipedia"], "General knowledge and encyclopedic information", WikipediaSearchTool(tracker: tracker)),
-            ("search.arxiv", "arXiv", ["physics", "math", "computer science", "preprint", "machine learning", "arxiv"], "Cutting-edge preprints in physics, math, and CS", ArXivSearchTool(tracker: tracker)),
-            ("search.semantic", "Semantic Scholar", ["academic", "scholarly", "citation", "cross-disciplinary", "semantic scholar"], "Cross-disciplinary academic research", SemanticScholarSearchTool(tracker: tracker)),
-            ("search.openalex", "OpenAlex", ["bibliometric", "citation data", "scholarly works", "openalex"], "Scholarly works with citation and bibliometric data", OpenAlexSearchTool(tracker: tracker)),
-            ("search.crossref", "CrossRef", ["doi", "publisher", "citation count", "crossref", "metadata"], "DOI metadata, publisher info, and citation counts", CrossRefSearchTool(tracker: tracker)),
-        ]
-
-        return searchTools.map { entry in
-            let tool = entry.tool
-            return Capability(
-                id: entry.id,
-                name: entry.name,
-                description: entry.description,
-                keywords: entry.keywords
-            ) { request in
-                await SearchCapabilityAdapter.execute(tool: tool, query: request.extractedGoal, tracker: tracker)
-            }
-        }
-    }
-
-    #if os(macOS)
-    private static func automatorCapability(tracker: ToolUsageTracker, index: AutomatorActionIndex) -> Capability {
-        Capability(
-            id: "automator.build",
-            name: "Build Automator Workflow",
-            description: "Build a macOS Automator .workflow file from a description",
-            keywords: ["automator", "workflow", "automate", "macro", "build workflow"]
-        ) { request in
-            let tool = BuildAutomatorWorkflowTool(tracker: tracker, index: index)
-            let args = BuildAutomatorWorkflowTool.Arguments(workflowDescription: request.extractedGoal)
-            return await tool.call(arguments: args)
-        }
-    }
-    #endif
-
-    private static let instructions = """
-You are The Conductor. You orchestrate device capabilities to fulfill user intent.
-Use action to do. Use library to know. Use manual to explain yourself. Use readWeb to read web pages.
-Respond tersely. One sentence when one sentence suffices.
-If a tool errors, explain in one sentence. Do not apologize.
-Never fabricate information. If you lack data, say so.
-"""
 
     init(chat: Chat, chatManager: ChatManager) {
         self.chat = chat
         self.chatManager = chatManager
 
-        let tracker = ToolUsageTracker()
-
-        var capabilities = Self.searchCapabilities(tracker: tracker)
+        var tools: [any AgentTool] = [
+            WikipediaSearchTool(),
+            PubMedSearchTool(),
+            ArXivSearchTool(),
+            SemanticScholarSearchTool(),
+            OpenAlexSearchTool(),
+            CrossRefSearchTool(),
+            WebReaderTool(),
+        ]
         #if os(macOS)
-        capabilities.append(Self.automatorCapability(tracker: tracker, index: Self.automatorIndex))
+        tools.append(BuildAutomatorWorkflowTool(index: AutomatorActionIndex()))
         #endif
 
-        let registry = CapabilityRegistry(capabilities: capabilities)
-
-        let tools: [any Tool] = [
-            ActionTool(registry: registry, tracker: tracker),
-            LibraryTool(registry: registry, tracker: tracker),
-            ManualTool(),
-            WebReaderTool(tracker: tracker),
-        ]
-
-        self.toolTracker = tracker
-        self.tools = tools
-        self._session = State(initialValue: LanguageModelSession(
-            tools: tools,
-            instructions: Self.instructions
-        ))
+        self._orchestrator = State(initialValue: ConductorOrchestrator(toolbox: tools))
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Model availability status
             if modelAvailability != .available {
                 modelStatusBanner
             }
-            
-            // Messages area
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message) {
-                                Task { await regenerate(message) }
-                            }
-                            .id(message.id)
+                            MessageBubbleView(message: message)
+                                .id(message.id)
                         }
-                        
-                        // Show streaming response
-                        if isResponding && !streamingContent.isEmpty {
-                            MessageBubbleView(message: Message(
-                                content: streamingContent,
-                                isUser: false,
-                                timestamp: Date()
-                            ))
-                            .id("streaming")
+
+                        if isResponding {
+                            NarrationGroupView(events: orchestrator.narrationEvents)
+                                .id("narration")
+                                .transition(.opacity)
                         }
                     }
                     .padding()
@@ -454,16 +362,17 @@ Never fabricate information. If you lack data, say so.
                         }
                     }
                 }
-                .onChange(of: streamingContent) { _, _ in
-                    withAnimation {
-                        proxy.scrollTo("streaming", anchor: .bottom)
+                .onChange(of: orchestrator.narrationEvents.count) { _, _ in
+                    if isResponding {
+                        withAnimation {
+                            proxy.scrollTo("narration", anchor: .bottom)
+                        }
                     }
                 }
             }
-            
+
             Divider()
-            
-            // Input area
+
             HStack(spacing: 12) {
                 TextField("Type a message...", text: $messageText, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -477,15 +386,11 @@ Never fabricate information. If you lack data, say so.
                     .lineLimit(1...5)
                     .disabled(isResponding || modelAvailability != .available)
                     .onSubmit {
-                        Task {
-                            await sendMessage()
-                        }
+                        Task { await sendMessage() }
                     }
-                
+
                 Button {
-                    Task {
-                        await sendMessage()
-                    }
+                    Task { await sendMessage() }
                 } label: {
                     if isResponding {
                         ProgressView()
@@ -510,13 +415,13 @@ Never fabricate information. If you lack data, say so.
             modelAvailability = model.availability
         }
     }
-    
+
     @ViewBuilder
     private var modelStatusBanner: some View {
         HStack {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
-            
+
             Text(modelStatusMessage)
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -529,7 +434,7 @@ Never fabricate information. If you lack data, say so.
         .background(Color(uiColor: .systemGray6))
         #endif
     }
-    
+
     private var modelStatusMessage: String {
         switch modelAvailability {
         case .available:
@@ -544,130 +449,36 @@ Never fabricate information. If you lack data, say so.
             return "Apple Intelligence is unavailable"
         }
     }
-    
+
     private func sendMessage() async {
         guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard modelAvailability == .available else { return }
         guard !isResponding else { return }
-        
+
         let userMessageContent = messageText
         messageText = ""
-        
-        // Add user message
-        let userMessage = Message(
-            content: userMessageContent,
-            isUser: true,
-            timestamp: Date()
-        )
+
+        let userMessage = Message(content: userMessageContent, isUser: true, timestamp: Date())
         messages.append(userMessage)
         chatManager.addMessage(userMessage, to: chat.id)
-        
-        // Start streaming response
+
         isResponding = true
-        streamingContent = ""
-        await toolTracker.reset()
 
         do {
-            try await streamResponse(to: userMessageContent)
+            let response = try await orchestrator.handle(userMessage: userMessageContent)
 
-            // Detect refusal loops — if the model repeated itself, compact and retry
-            if isRepeatedResponse() {
-                // Remove the repeated response we just appended
-                if let last = messages.last, !last.isUser {
-                    messages.removeLast()
-                }
-                compactSession()
-                streamingContent = ""
-                await toolTracker.reset()
-                try await streamResponse(
-                    to: "\(userMessageContent)\n\n(Use library to search. Use manual to describe capabilities. Do not apologize.)"
-                )
-            }
-        } catch {
-            let isGenerationError = String(describing: error).contains("GenerationError")
-
-            if isGenerationError {
-                // Context exhausted — compact the transcript and retry
-                compactSession()
-                streamingContent = ""
-                await toolTracker.reset()
-
-                do {
-                    try await streamResponse(to: userMessageContent)
-                } catch {
-                    let errorMessage = Message(
-                        content: "The conversation is too long even after compacting. Try starting a new chat.",
-                        isUser: false,
-                        timestamp: Date()
-                    )
-                    messages.append(errorMessage)
-                    chatManager.addMessage(errorMessage, to: chat.id)
-                }
-            } else {
-                let errorMessage = Message(
-                    content: "Something went wrong: \(error.localizedDescription)",
-                    isUser: false,
-                    timestamp: Date()
-                )
-                messages.append(errorMessage)
-                chatManager.addMessage(errorMessage, to: chat.id)
-            }
-        }
-
-        isResponding = false
-        streamingContent = ""
-    }
-
-    private func streamResponse(to prompt: String) async throws {
-        let stream = session.streamResponse(to: prompt)
-
-        for try await partial in stream {
-            streamingContent = partial.content
-        }
-
-        if !streamingContent.isEmpty {
-            let usedTools = await toolTracker.badgeSnapshot()
-            let usedSources = await toolTracker.sourceSnapshot()
-            let workflow = await toolTracker.workflowPreviewSnapshot()
-            let webStatus = await toolTracker.webReaderStatusSnapshot()
             let assistantMessage = Message(
-                content: streamingContent,
+                content: response.formatted,
                 isUser: false,
                 timestamp: Date(),
-                toolsUsed: usedTools,
-                sources: usedSources,
-                workflowPreview: workflow,
-                webReaderStatus: webStatus
+                sources: response.sections.flatMap(\.sources),
+                narrationLog: orchestrator.narrationEvents
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)
-        }
-    }
-
-    private func regenerate(_ assistantMessage: Message) async {
-        // Find the user message that preceded this response
-        guard let index = messages.firstIndex(where: { $0.id == assistantMessage.id }),
-              index > 0,
-              messages[index - 1].isUser else { return }
-        guard !isResponding else { return }
-
-        let userPrompt = messages[index - 1].content
-
-        // Remove the old assistant message
-        messages.remove(at: index)
-
-        isResponding = true
-        streamingContent = ""
-        await toolTracker.reset()
-
-        // Compact to drop the old response from the transcript
-        compactSession()
-
-        do {
-            try await streamResponse(to: userPrompt)
         } catch {
             let errorMessage = Message(
-                content: "Regeneration failed: \(error.localizedDescription)",
+                content: "Something went wrong: \(error.localizedDescription)",
                 isUser: false,
                 timestamp: Date()
             )
@@ -676,33 +487,6 @@ Never fabricate information. If you lack data, say so.
         }
 
         isResponding = false
-        streamingContent = ""
-    }
-
-    private func isRepeatedResponse() -> Bool {
-        let assistantMessages = messages.filter { !$0.isUser }
-        guard assistantMessages.count >= 2 else { return false }
-        let last = assistantMessages[assistantMessages.count - 1].content
-        let prev = assistantMessages[assistantMessages.count - 2].content
-        return last == prev
-    }
-
-    private func compactSession() {
-        let transcript = session.transcript
-        // Keep the first entry (establishes context) and the last few exchanges
-        let allEntries = Array(transcript)
-        let keepCount = min(4, allEntries.count)
-        let entriesToKeep: [Transcript.Entry]
-        if allEntries.count <= keepCount {
-            entriesToKeep = allEntries
-        } else {
-            entriesToKeep = [allEntries[0]] + allEntries.suffix(keepCount - 1)
-        }
-
-        let compactedTranscript = Transcript(entries: entriesToKeep)
-        let newSession = LanguageModelSession(tools: tools, transcript: compactedTranscript)
-        newSession.prewarm()
-        session = newSession
     }
 }
 
@@ -710,9 +494,8 @@ Never fabricate information. If you lack data, say so.
 
 struct MessageBubbleView: View {
     let message: Message
-    var onRegenerate: (() -> Void)?
     @State private var showCopied = false
-    @State private var savedPath: String?
+    @State private var showDetails = false
 
     var body: some View {
         HStack {
@@ -750,30 +533,14 @@ struct MessageBubbleView: View {
                     }
                 }
 
-                #if os(macOS)
-                if let preview = message.workflowPreview {
-                    WorkflowCardView(preview: preview, savedPath: $savedPath, onRegenerate: onRegenerate)
-                }
-                #endif
-
-                if let webStatus = message.webReaderStatus {
-                    WebReaderCardView(status: webStatus)
+                if !message.isUser && !message.narrationLog.isEmpty {
+                    NarrationGroupView(events: message.narrationLog)
                 }
 
                 HStack(spacing: 6) {
                     Text(message.timestamp, style: .time)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-
-                    ForEach(message.toolsUsed, id: \.self) { badge in
-                        Image(systemName: badge.icon)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            .background(badge.tint.color)
-                            .clipShape(Circle())
-                            .help(badge.label)
-                    }
 
                     if !message.isUser {
                         Button {
@@ -795,14 +562,16 @@ struct MessageBubbleView: View {
                         .buttonStyle(.plain)
                         .help("Copy")
 
-                        if let onRegenerate {
-                            Button(action: onRegenerate) {
-                                Image(systemName: "arrow.clockwise")
+                        if !message.narrationLog.isEmpty {
+                            Button {
+                                showDetails = true
+                            } label: {
+                                Image(systemName: "info.circle")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
-                            .help("Regenerate")
+                            .help("Task details")
                         }
                     }
                 }
@@ -812,105 +581,11 @@ struct MessageBubbleView: View {
                 Spacer(minLength: 60)
             }
         }
-    }
-}
-
-#if os(macOS)
-struct WorkflowCardView: View {
-    let preview: WorkflowPreview
-    @Binding var savedPath: String?
-    var onRegenerate: (() -> Void)?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(preview.title, systemImage: "gearshape.2")
-                .font(.headline)
-
-            ForEach(Array(preview.steps.enumerated()), id: \.offset) { index, step in
-                HStack(alignment: .top, spacing: 6) {
-                    Text("\(index + 1).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20, alignment: .trailing)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(step.actionName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        if !step.parameterSummary.isEmpty {
-                            Text(step.parameterSummary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                if index < preview.steps.count - 1 {
-                    HStack(spacing: 4) {
-                        Spacer().frame(width: 20)
-                        Image(systemName: "chevron.down")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(step.outputType)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-            }
-
-            Divider()
-
-            HStack {
-                if let savedPath {
-                    Label("Saved to \(savedPath)", systemImage: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else {
-                    let fileExists = FileManager.default.fileExists(atPath: preview.tempFileURL.path)
-                    Button {
-                        saveWorkflow(from: preview.tempFileURL, suggestedName: preview.title)
-                    } label: {
-                        Label("Save .workflow", systemImage: "square.and.arrow.down")
-                            .font(.caption)
-                    }
-                    .disabled(!fileExists)
-
-                    if let onRegenerate {
-                        Button(action: onRegenerate) {
-                            Label("Regenerate", systemImage: "arrow.clockwise")
-                                .font(.caption)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-        )
-        .cornerRadius(12)
-    }
-
-    private func saveWorkflow(from tempURL: URL, suggestedName: String) {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "workflow")!]
-        panel.nameFieldStringValue = "\(suggestedName).workflow"
-        panel.begin { response in
-            guard response == .OK, let destURL = panel.url else { return }
-            do {
-                if FileManager.default.fileExists(atPath: destURL.path) {
-                    try FileManager.default.removeItem(at: destURL)
-                }
-                try FileManager.default.copyItem(at: tempURL, to: destURL)
-                savedPath = destURL.path
-            } catch {
-                // File copy failed — the panel already shows errors for permission issues
-            }
+        .sheet(isPresented: $showDetails) {
+            TaskGraphSheet(narrationEvents: message.narrationLog)
         }
     }
 }
-#endif
 
 // MARK: - Markdown Text View
 
@@ -1007,11 +682,11 @@ struct ChatEmptyStateView: View {
                 .imageScale(.large)
                 .font(.system(size: 60))
                 .foregroundStyle(.tint)
-            
+
             Text("Conductor")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            
+
             Text("Select a chat or start a new conversation")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -1029,11 +704,11 @@ struct UnsupportedOSView: View {
                 .imageScale(.large)
                 .font(.system(size: 60))
                 .foregroundStyle(.orange)
-            
+
             Text("OS Version Not Supported")
                 .font(.title)
                 .fontWeight(.bold)
-            
+
             Text("Conductor requires iOS 19.0 or macOS 26.0 or later to use Apple Intelligence features.")
                 .font(.body)
                 .foregroundStyle(.secondary)

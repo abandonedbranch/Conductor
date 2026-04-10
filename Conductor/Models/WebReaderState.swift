@@ -5,9 +5,3 @@ struct WebReaderResult: Codable, Hashable {
     let title: String
     let text: String
 }
-
-enum WebReaderStatus: Codable, Hashable {
-    case loading(URL)
-    case success(WebReaderResult)
-    case error(String)
-}

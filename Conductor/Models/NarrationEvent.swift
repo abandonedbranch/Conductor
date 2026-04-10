@@ -1,6 +1,6 @@
 import Foundation
 
-struct NarrationEvent: Sendable {
+struct NarrationEvent: Codable, Sendable {
     let taskID: UUID
     let purpose: AgentPurpose
     let message: String

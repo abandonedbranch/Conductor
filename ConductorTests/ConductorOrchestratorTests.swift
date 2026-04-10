@@ -5,8 +5,11 @@ import Testing
 @Suite("ConductorOrchestrator Tests", .serialized)
 struct ConductorOrchestratorTests {
 
+    @MainActor
     @Test("buildGraph creates nodes grouped by purpose with correct tool count")
     func buildGraphGroupsByPurpose() async {
+        guard #available(macOS 26.0, iOS 19.0, *) else { return }
+
         let toolbox: [any AgentTool] = [
             WikipediaSearchTool(),
             PubMedSearchTool(),
@@ -25,18 +28,19 @@ struct ConductorOrchestratorTests {
         let graph = await orchestrator.buildGraph(from: intent)
         let nodes = await graph.allNodes
 
-        // overview has 1 tool (Wikipedia) → 1 node
         let overviewNodes = nodes.filter { $0.purpose == .overview }
         #expect(overviewNodes.count == 1)
         #expect(overviewNodes[0].toolNames.count == 1)
 
-        // research has 3 tools → 2 nodes (chunks of 2: [PubMed, arXiv], [SemanticScholar])
         let researchNodes = nodes.filter { $0.purpose == .research }
         #expect(researchNodes.count == 2)
     }
 
+    @MainActor
     @Test("buildGraph sets correct dependencies across chunked nodes")
     func buildGraphDependencies() async {
+        guard #available(macOS 26.0, iOS 19.0, *) else { return }
+
         let toolbox: [any AgentTool] = [
             WikipediaSearchTool(),
             PubMedSearchTool(),
@@ -61,8 +65,11 @@ struct ConductorOrchestratorTests {
         }
     }
 
+    @MainActor
     @Test("buildGraph with no matching tools creates no nodes for that purpose")
     func buildGraphNoMatchingTools() async {
+        guard #available(macOS 26.0, iOS 19.0, *) else { return }
+
         let toolbox: [any AgentTool] = [WikipediaSearchTool()]
         let orchestrator = ConductorOrchestrator(toolbox: toolbox)
 

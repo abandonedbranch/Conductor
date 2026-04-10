@@ -2,10 +2,12 @@ import Foundation
 import FoundationModels
 
 @available(iOS 19.0, macOS 26.0, *)
-@Observable
+@MainActor @Observable
 final class ConductorOrchestrator {
     let toolbox: [any AgentTool]
     private(set) var activeGraph: TaskGraph?
+    private(set) var narrationEvents: [NarrationEvent] = []
+    private(set) var isProcessing = false
 
     private static let instructions = """
     Extract the user's intent as a structured plan.
@@ -19,24 +21,85 @@ final class ConductorOrchestrator {
     }
 
     func handle(userMessage: String) async throws -> StitchedResponse {
+        isProcessing = true
+        narrationEvents = []
+        defer { isProcessing = false }
+
+        do {
+            return try await orchestrate(userMessage)
+        } catch {
+            guard isUnsafeContentError(error) else { throw error }
+
+            // Attempt to rephrase the query in neutral academic terms
+            guard let rephrased = await rephrase(userMessage) else {
+                throw error
+            }
+
+            narrationEvents = []
+            return try await orchestrate(rephrased)
+        }
+    }
+
+    // MARK: - Private
+
+    private func orchestrate(_ message: String) async throws -> StitchedResponse {
         let intentSession = LanguageModelSession(
             tools: [IntentExtractionTool()],
             instructions: Self.instructions
         )
 
         let response = try await intentSession.respond(
-            to: userMessage,
+            to: message,
             generating: ExtractedIntent.self
         )
 
         let graph = await buildGraph(from: response.content)
         activeGraph = graph
 
-        await execute(graph)
+        guard await graph.nodeCount > 0 else {
+            return StitchedResponse(sections: [
+                .init(heading: "Response", content: "I wasn't able to break that request into actionable tasks. Try rephrasing or being more specific.", sources: [])
+            ])
+        }
 
+        let narrationTask = Task {
+            let stream = await graph.narrationStream
+            for await event in stream {
+                self.narrationEvents.append(event)
+            }
+        }
+
+        await execute(graph)
         let stitched = await graph.stitch()
         await graph.finishNarration()
+        narrationTask.cancel()
         return stitched
+    }
+
+    private func rephrase(_ message: String) async -> String? {
+        let session = LanguageModelSession(instructions: """
+            You help rephrase questions for academic research contexts.
+            Rewrite the question to focus on scientific literature review rather than practical advice.
+            Return only the rephrased question.
+            """
+        )
+
+        do {
+            var content = ""
+            let stream = session.streamResponse(
+                to: "Rephrase for a neutral academic literature review: \(message)"
+            )
+            for try await partial in stream {
+                content = partial.content
+            }
+            return content.isEmpty ? nil : content
+        } catch {
+            return nil
+        }
+    }
+
+    private func isUnsafeContentError(_ error: Error) -> Bool {
+        String(describing: error).contains("unsafe")
     }
 
     func buildGraph(from intent: ExtractedIntent) async -> TaskGraph {
@@ -44,7 +107,7 @@ final class ConductorOrchestrator {
         var idMap: [Int: [UUID]] = [:]
 
         for (index, purposeTask) in intent.purposes.enumerated() {
-            guard let purpose = AgentPurpose(rawValue: purposeTask.purpose) else { continue }
+            guard let purpose = AgentPurpose(rawValue: purposeTask.purpose.lowercased()) else { continue }
             let tools = toolbox.filter { $0.purpose == purpose }
             guard !tools.isEmpty else { continue }
 
