@@ -389,7 +389,7 @@ struct ChatDetailView: View {
                         }
 
                         if isResponding {
-                            ActiveActionsView(actions: conductor.proxy.actions.filter { $0.status == .running })
+                            ActionGroupView(actions: conductor.proxy.actions)
                                 .id("active-actions")
                                 .transition(.opacity)
                         }
@@ -528,22 +528,6 @@ struct ChatDetailView: View {
         }
 
         isResponding = false
-    }
-}
-
-@available(iOS 19.0, macOS 26.0, *)
-struct ActiveActionsView: View {
-    let actions: [ActionNode]
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(actions) { action in
-                HStack {
-                    ProgressView().controlSize(.small)
-                    Text(action.goal).font(.callout).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(.horizontal)
     }
 }
 
