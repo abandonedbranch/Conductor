@@ -36,7 +36,69 @@ actor WorkingMemoryGraph {
     func append(intent: LanguageIntentQuery) {
         intentStack.insert(intent, at: 0)
         turn += 1
+        rebuildActionNodes(for: intent)
+        updateSubjectStack(for: intent)
         changesContinuation.yield(.intent)
+    }
+
+    // MARK: - Observers
+
+    private func rebuildActionNodes(for intent: LanguageIntentQuery) {
+        // 1. Any prior awaitingUser clarifications are now answered.
+        for (id, node) in actions where node.status == .awaitingUser && node.kind == .clarification {
+            actions[id]?.status = .completed
+        }
+        changesContinuation.yield(.actions)
+
+        // 2. Decide intent subjects to filter on (best-effort map from strings to enum).
+        let intentSubjects = intent.subjects.compactMap(IntentSubject.init(rawValue:))
+
+        // 3. Search toolbox.
+        let toolMatches = deterministicSearch(
+            intent: intent, intentSubjects: intentSubjects,
+            pool: toolDescriptors, cap: 4
+        )
+        let verbMatches = deterministicSearch(
+            intent: intent, intentSubjects: intentSubjects,
+            pool: verbDescriptors, cap: 4
+        )
+
+        // 4. If the toolbox doesn't match, write a clarification and stop.
+        guard !toolMatches.isEmpty else {
+            let clarification = ActionNode(
+                kind: .clarification,
+                goal: ClarificationTemplate.render(intent: intent, toolbox: toolDescriptors),
+                verbs: intent.verbs,
+                subjects: intentSubjects,
+                answerShape: intent.answerShape,
+                assignedVerbNames: [],
+                assignedToolNames: [],
+                status: .awaitingUser,
+                dependsOn: []
+            )
+            actions[clarification.id] = clarification
+            changesContinuation.yield(.actions)
+            return
+        }
+
+        // 5. One work Action per intent (v1).
+        let work = ActionNode(
+            kind: .work,
+            goal: intent.subjects.joined(separator: ", "),
+            verbs: intent.verbs,
+            subjects: intentSubjects,
+            answerShape: intent.answerShape,
+            assignedVerbNames: verbMatches.map(\.name),
+            assignedToolNames: toolMatches.map(\.name),
+            status: .pending,
+            dependsOn: []
+        )
+        actions[work.id] = work
+        changesContinuation.yield(.actions)
+    }
+
+    private func updateSubjectStack(for intent: LanguageIntentQuery) {
+        // Wired in Task 14.
     }
 
     func insertAction(_ node: ActionNode) {
