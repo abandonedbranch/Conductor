@@ -44,6 +44,15 @@ struct BuildAutomatorWorkflowTool: AgentTool {
     let purpose: AgentPurpose = .build
     let friendlyName = "Automator"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.build],
+            subjects: [.workflow],
+            answerShapes: [.workflow],
+            priority: 10
+        )
+    }
+
     private let index: AutomatorActionIndex
 
     init(index: AutomatorActionIndex) {

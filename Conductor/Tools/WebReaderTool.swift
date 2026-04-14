@@ -8,6 +8,15 @@ struct WebReaderTool: AgentTool {
     let purpose: AgentPurpose = .web
     let friendlyName = "Web"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.read, .summarize],
+            subjects: [.webpage],
+            answerShapes: [.summary, .direct],
+            priority: 10
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The full URL of the web page to read (must be HTTPS)")

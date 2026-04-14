@@ -11,6 +11,15 @@ struct PubMedSearchTool: AgentTool {
     let purpose: AgentPurpose = .research
     let friendlyName = "PubMed"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic, .biomedical],
+            answerShapes: [.citations, .direct],
+            priority: 10
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The search query to look up on PubMed")

@@ -10,6 +10,15 @@ struct WikipediaSearchTool: AgentTool {
     let purpose: AgentPurpose = .overview
     let friendlyName = "Wikipedia"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find, .summarize],
+            subjects: [.encyclopedic],
+            answerShapes: [.overview, .summary, .direct],
+            priority: 5
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The search query to look up on Wikipedia")

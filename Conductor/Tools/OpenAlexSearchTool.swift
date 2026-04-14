@@ -10,6 +10,15 @@ struct OpenAlexSearchTool: AgentTool {
     let purpose: AgentPurpose = .research
     let friendlyName = "OpenAlex"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic],
+            answerShapes: [.citations, .direct],
+            priority: 9
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The search query to look up on OpenAlex")

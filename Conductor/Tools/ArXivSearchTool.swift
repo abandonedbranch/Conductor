@@ -10,6 +10,15 @@ struct ArXivSearchTool: AgentTool {
     let purpose: AgentPurpose = .research
     let friendlyName = "arXiv"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.preprint, .academic],
+            answerShapes: [.citations, .direct],
+            priority: 10
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The search query to look up on arXiv")

@@ -10,6 +10,15 @@ struct SemanticScholarSearchTool: AgentTool {
     let purpose: AgentPurpose = .research
     let friendlyName = "Semantic Scholar"
 
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic],
+            answerShapes: [.citations, .direct],
+            priority: 10
+        )
+    }
+
     @Generable
     struct Arguments {
         @Guide(description: "The search query to look up on Semantic Scholar")
