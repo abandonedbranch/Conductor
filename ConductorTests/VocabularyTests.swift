@@ -12,10 +12,10 @@ struct VocabularyTests {
     }
 
     @Test("IntentSubject covers the seed set")
-    func intentSubjectCases() throws {
+    func intentSubjectCases() {
         guard #available(iOS 19.0, macOS 26.0, *) else { return }
-        #expect(IntentSubject.allCases.count == 7)
-        #expect(IntentSubject(rawValue: "academic") == .academic)
+        let raws = Set(IntentSubject.allCases.map(\.rawValue))
+        #expect(raws == ["academic", "biomedical", "preprint", "encyclopedic", "webpage", "workflow", "conversational"])
     }
 
     @Test("AnswerShape covers the seed set")
