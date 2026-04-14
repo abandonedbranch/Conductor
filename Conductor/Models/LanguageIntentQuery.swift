@@ -15,7 +15,6 @@ struct LanguageIntentQuery: Sendable, Codable {
     @Guide(description: "How this turn relates to the prior turn, if at all")
     var continuation: Continuation?
 
-    @available(iOS 19.0, macOS 26.0, *)
     @Generable
     enum Continuation: String, Codable, Sendable {
         case refines

@@ -25,6 +25,12 @@ struct LanguageIntentQueryTests {
     func continuationCases() {
         guard #available(iOS 19.0, macOS 26.0, *) else { return }
         let cases: [LanguageIntentQuery.Continuation] = [.refines, .extends, .pivots, .recalls]
+        for c in cases {
+            switch c {
+            case .refines, .extends, .pivots, .recalls:
+                break  // exhaustive — adding a case here produces a compile error
+            }
+        }
         #expect(cases.count == 4)
     }
 }
