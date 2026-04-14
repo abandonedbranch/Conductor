@@ -1,0 +1,170 @@
+<h2>Info Drilldown: Two Approaches</h2>
+<p class="subtitle">What happens when the user taps the (i) button on a stitched response</p>
+
+<div class="split" style="gap: 24px; align-items: flex-start;">
+
+  <!-- Option A: Sheet -->
+  <div style="flex: 1;">
+    <h3 style="text-align: center; margin-bottom: 12px;">Sheet Overlay</h3>
+    <div class="mockup" style="max-width: 100%;">
+      <div class="mockup-header">Research Log — 3 agents, 6 tool calls</div>
+      <div class="mockup-body" style="padding: 16px; display: flex; flex-direction: column; gap: 16px; font-size: 13px;">
+
+        <!-- Overview node -->
+        <div style="border-left: 3px solid #FFA500; padding-left: 12px;">
+          <div style="color: #FFA500; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Overview</div>
+          <div style="color: #70c070; font-size: 11px; margin-top: 2px;">Completed in 1.2s</div>
+          <div style="margin-top: 8px; color: #aaa; font-size: 12px; font-weight: 600;">Wikipedia</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            CRISPR-Cas9 is a genome editing technology adapted from bacterial immune systems. Key therapeutic applications include sickle cell disease (Casgevy, FDA approved Dec 2023), beta-thalassemia, and CAR-T cell engineering for cancer...
+          </div>
+          <div style="color: #666; font-size: 11px; margin-top: 4px; font-style: italic;">en.wikipedia.org/wiki/CRISPR_gene_therapy</div>
+        </div>
+
+        <!-- Research node 1 -->
+        <div style="border-left: 3px solid #4A90D9; padding-left: 12px;">
+          <div style="color: #4A90D9; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Research — Agent 1</div>
+          <div style="color: #70c070; font-size: 11px; margin-top: 2px;">Completed in 3.4s</div>
+
+          <div style="margin-top: 8px; color: #aaa; font-size: 12px; font-weight: 600;">PubMed</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            Frangoul H, et al. (2021) "CRISPR-Cas9 Gene Editing for Sickle Cell Disease and Beta-Thalassemia" — NEJM. PMID: 33283989. Demonstrated durable clinical responses in transfusion-dependent patients...
+          </div>
+          <div style="color: #666; font-size: 11px; margin-top: 4px; font-style: italic;">pubmed.ncbi.nlm.nih.gov/33283989</div>
+
+          <div style="margin-top: 10px; color: #aaa; font-size: 12px; font-weight: 600;">arXiv</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            Chen, Wang et al. (2024) "Advances in CRISPR Delivery Mechanisms for In Vivo Therapy" — arxiv:2401.08832. Survey of lipid nanoparticle and AAV delivery vectors...
+          </div>
+          <div style="color: #666; font-size: 11px; margin-top: 4px; font-style: italic;">arxiv.org/abs/2401.08832</div>
+        </div>
+
+        <!-- Research node 2 -->
+        <div style="border-left: 3px solid #4A90D9; padding-left: 12px;">
+          <div style="color: #4A90D9; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Research — Agent 2</div>
+          <div style="color: #70c070; font-size: 11px; margin-top: 2px;">Completed in 2.8s</div>
+
+          <div style="margin-top: 8px; color: #aaa; font-size: 12px; font-weight: 600;">Semantic Scholar</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            Gillmore JD, et al. (2021) "CRISPR-Cas9 In Vivo Gene Editing for Transthyretin Amyloidosis" — 847 citations. First demonstration of in vivo CRISPR editing in humans...
+          </div>
+
+          <div style="margin-top: 10px; color: #aaa; font-size: 12px; font-weight: 600;">OpenAlex</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            Doudna JA, Charpentier E. (2014) "The new frontier of genome engineering with CRISPR-Cas9" — 12,481 citations. Foundational review of Cas9 mechanism and applications...
+          </div>
+        </div>
+
+        <!-- Build node -->
+        <div style="border-left: 3px solid #888; padding-left: 12px;">
+          <div style="color: #888; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Build</div>
+          <div style="color: #70c070; font-size: 11px; margin-top: 2px;">Completed in 4.1s</div>
+
+          <div style="margin-top: 8px; color: #aaa; font-size: 12px; font-weight: 600;">Automator</div>
+          <div style="color: #999; font-size: 12px; margin-top: 4px; line-height: 1.4;">
+            Generated "Weekly CRISPR Summary.workflow"<br>
+            Step 1: Fetch latest PubMed results for "CRISPR therapy"<br>
+            Step 2: Format results as HTML digest<br>
+            Step 3: New Mail Message with digest body<br>
+            Step 4: Calendar alarm trigger (every Monday 8:00 AM)
+          </div>
+        </div>
+
+        <!-- Dependency graph visual -->
+        <div style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; text-align: center;">
+          <div style="font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Task Graph</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px;">
+            <div style="padding: 4px 10px; border: 1px solid #FFA500; border-radius: 6px; color: #FFA500;">Overview</div>
+            <div style="color: #555;">&rarr;</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="padding: 4px 10px; border: 1px solid #4A90D9; border-radius: 6px; color: #4A90D9;">Research 1</div>
+              <div style="padding: 4px 10px; border: 1px solid #4A90D9; border-radius: 6px; color: #4A90D9;">Research 2</div>
+            </div>
+            <div style="color: #555;">&rarr;</div>
+            <div style="padding: 4px 10px; border: 1px solid #888; border-radius: 6px; color: #888;">Build</div>
+          </div>
+          <div style="font-size: 11px; color: #555; margin-top: 6px;">Total: 11.5s &middot; 6 tool calls &middot; 5 sources</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Inline expand -->
+  <div style="flex: 1;">
+    <h3 style="text-align: center; margin-bottom: 12px;">Inline Expand</h3>
+    <div class="mockup" style="max-width: 100%;">
+      <div class="mockup-header">Conductor — Chat</div>
+      <div class="mockup-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+
+        <!-- Collapsed stitched response -->
+        <div style="align-self: flex-start; background: rgba(255,255,255,0.08); padding: 14px; border-radius: 4px 16px 16px 16px; max-width: 95%; color: #e0e0e0; line-height: 1.5;">
+          <div style="font-weight: 600; margin-bottom: 6px;">CRISPR Gene Therapy Research Summary</div>
+          <div style="color: #bbb; font-size: 12px;">
+            <strong>Overview:</strong> CRISPR-Cas9 enables precise genome editing...<br><br>
+            <strong>Key Findings:</strong> 5 peer-reviewed sources identified...<br><br>
+            <strong>Workflow:</strong> Created "Weekly CRISPR Summary"...
+          </div>
+
+          <!-- Expanded log below -->
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+              <div style="width: 18px; height: 18px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #999; font-style: italic; font-weight: 600;">i</div>
+              <span style="font-size: 11px; color: #999;">Research log — 3 agents, 6 tool calls, 11.5s</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+              <div style="border-left: 2px solid #FFA500; padding-left: 8px;">
+                <span style="color: #FFA500; font-size: 11px;">OVERVIEW</span>
+                <span style="color: #666; font-size: 11px;"> &middot; Wikipedia &middot; 1.2s</span>
+                <div style="color: #888; margin-top: 2px;">CRISPR-Cas9 genome editing, therapeutic applications...</div>
+              </div>
+              <div style="border-left: 2px solid #4A90D9; padding-left: 8px;">
+                <span style="color: #4A90D9; font-size: 11px;">RESEARCH</span>
+                <span style="color: #666; font-size: 11px;"> &middot; PubMed, arXiv &middot; 3.4s</span>
+                <div style="color: #888; margin-top: 2px;">Frangoul 2021 (NEJM), Chen 2024 (arXiv)...</div>
+              </div>
+              <div style="border-left: 2px solid #4A90D9; padding-left: 8px;">
+                <span style="color: #4A90D9; font-size: 11px;">RESEARCH</span>
+                <span style="color: #666; font-size: 11px;"> &middot; S. Scholar, OpenAlex &middot; 2.8s</span>
+                <div style="color: #888; margin-top: 2px;">Gillmore 2021, Doudna 2014...</div>
+              </div>
+              <div style="border-left: 2px solid #888; padding-left: 8px;">
+                <span style="color: #888; font-size: 11px;">BUILD</span>
+                <span style="color: #666; font-size: 11px;"> &middot; Automator &middot; 4.1s</span>
+                <div style="color: #888; margin-top: 2px;">4-step workflow generated</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next message would go here -->
+        <div style="color: #555; font-size: 12px; text-align: center; padding: 8px; font-style: italic;">
+          (chat continues below...)
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>Which drilldown approach?</h3>
+  <div class="options">
+    <div class="option" data-choice="sheet" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Sheet overlay</h3>
+        <p>Full-screen sheet with complete raw results, source links, and task graph visualization. Rich detail without cluttering the chat. Feels like opening an inspector.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="inline" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Inline expand</h3>
+        <p>Compact log summary expands below the response in-place. Keeps context in the chat flow. Less detail but less disruptive. Tapping a line item could open the sheet for full detail.</p>
+      </div>
+    </div>
+  </div>
+</div>
