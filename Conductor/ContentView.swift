@@ -352,7 +352,7 @@ struct ChatDetailView: View {
     @State private var messages: [Message] = []
     @State private var isResponding = false
     @State private var modelAvailability: SystemLanguageModel.Availability = .unavailable(.modelNotReady)
-    @State private var orchestrator: ConductorOrchestrator
+    @State private var conductor: Conductor
 
     private let model = SystemLanguageModel.default
 
@@ -373,7 +373,8 @@ struct ChatDetailView: View {
         tools.append(BuildAutomatorWorkflowTool(index: AutomatorActionIndex()))
         #endif
 
-        self._orchestrator = State(initialValue: ConductorOrchestrator(toolbox: tools))
+        let snapshot = chatManager.loadSnapshot(for: chat.id)
+        self._conductor = State(initialValue: Conductor(tools: tools, snapshot: snapshot))
     }
 
     var body: some View {
@@ -391,8 +392,8 @@ struct ChatDetailView: View {
                         }
 
                         if isResponding {
-                            NarrationGroupView(events: orchestrator.narrationEvents)
-                                .id("narration")
+                            ActiveActionsView(actions: conductor.proxy.actions.filter { $0.status == .running })
+                                .id("active-actions")
                                 .transition(.opacity)
                         }
                     }
@@ -405,10 +406,10 @@ struct ChatDetailView: View {
                         }
                     }
                 }
-                .onChange(of: orchestrator.narrationEvents.count) { _, _ in
+                .onChange(of: conductor.proxy.actions.count) { _, _ in
                     if isResponding {
                         withAnimation {
-                            proxy.scrollTo("narration", anchor: .bottom)
+                            proxy.scrollTo("active-actions", anchor: .bottom)
                         }
                     }
                 }
@@ -508,17 +509,18 @@ struct ChatDetailView: View {
         isResponding = true
 
         do {
-            let response = try await orchestrator.handle(userMessage: userMessageContent)
-
+            let result = try await conductor.handle(message: userMessageContent)
             let assistantMessage = Message(
-                content: response.formatted,
+                content: result.text,
                 isUser: false,
                 timestamp: Date(),
-                sources: response.sections.flatMap(\.sources),
-                narrationLog: orchestrator.narrationEvents
+                sources: result.sources,
+                narrationLog: []
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)
+            let snap = await conductor.snapshot()
+            chatManager.saveSnapshot(snap, for: chat.id)
         } catch {
             let errorMessage = Message(
                 content: "Something went wrong: \(error.localizedDescription)",
@@ -530,6 +532,22 @@ struct ChatDetailView: View {
         }
 
         isResponding = false
+    }
+}
+
+@available(iOS 19.0, macOS 26.0, *)
+struct ActiveActionsView: View {
+    let actions: [ActionNode]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(actions) { action in
+                HStack {
+                    ProgressView().controlSize(.small)
+                    Text(action.goal).font(.callout).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal)
     }
 }
 
