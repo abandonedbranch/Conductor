@@ -7,7 +7,6 @@ import FoundationModels
 struct WikipediaSearchTool: AgentTool {
     let name = "searchWikipedia"
     let description = "Search Wikipedia for general knowledge, overviews, historical context, and encyclopedic information."
-    let purpose: AgentPurpose = .overview
     let friendlyName = "Wikipedia"
 
     var affordance: ToolAffordance {

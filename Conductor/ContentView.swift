@@ -23,19 +23,17 @@ struct Message: Identifiable, Codable {
     let isUser: Bool
     let timestamp: Date
     var sources: [ToolSource]
-    var narrationLog: [NarrationEvent]
 
     enum CodingKeys: String, CodingKey {
-        case id, content, isUser, timestamp, sources, narrationLog
+        case id, content, isUser, timestamp, sources
     }
 
-    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, sources: [ToolSource] = [], narrationLog: [NarrationEvent] = []) {
+    init(id: UUID = UUID(), content: String, isUser: Bool, timestamp: Date, sources: [ToolSource] = []) {
         self.id = id
         self.content = content
         self.isUser = isUser
         self.timestamp = timestamp
         self.sources = sources
-        self.narrationLog = narrationLog
     }
 
     init(from decoder: Decoder) throws {
@@ -45,7 +43,6 @@ struct Message: Identifiable, Codable {
         isUser = try container.decode(Bool.self, forKey: .isUser)
         timestamp = try container.decode(Date.self, forKey: .timestamp)
         sources = try container.decodeIfPresent([ToolSource].self, forKey: .sources) ?? []
-        narrationLog = try container.decodeIfPresent([NarrationEvent].self, forKey: .narrationLog) ?? []
     }
 }
 
@@ -514,8 +511,7 @@ struct ChatDetailView: View {
                 content: result.text,
                 isUser: false,
                 timestamp: Date(),
-                sources: result.sources,
-                narrationLog: []
+                sources: result.sources
             )
             messages.append(assistantMessage)
             chatManager.addMessage(assistantMessage, to: chat.id)
@@ -556,7 +552,6 @@ struct ActiveActionsView: View {
 struct MessageBubbleView: View {
     let message: Message
     @State private var showCopied = false
-    @State private var showDetails = false
 
     var body: some View {
         HStack {
@@ -594,10 +589,6 @@ struct MessageBubbleView: View {
                     }
                 }
 
-                if !message.isUser && !message.narrationLog.isEmpty {
-                    NarrationGroupView(events: message.narrationLog)
-                }
-
                 HStack(spacing: 6) {
                     Text(message.timestamp, style: .time)
                         .font(.caption2)
@@ -622,18 +613,6 @@ struct MessageBubbleView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Copy")
-
-                        if !message.narrationLog.isEmpty {
-                            Button {
-                                showDetails = true
-                            } label: {
-                                Image(systemName: "info.circle")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Task details")
-                        }
                     }
                 }
             }
@@ -641,9 +620,6 @@ struct MessageBubbleView: View {
             if !message.isUser {
                 Spacer(minLength: 60)
             }
-        }
-        .sheet(isPresented: $showDetails) {
-            TaskGraphSheet(narrationEvents: message.narrationLog)
         }
     }
 }

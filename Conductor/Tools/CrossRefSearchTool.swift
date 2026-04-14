@@ -7,7 +7,6 @@ import FoundationModels
 struct CrossRefSearchTool: AgentTool {
     let name = "searchCrossRef"
     let description = "Search CrossRef for DOI metadata, publisher information, and citation counts. Good for verifying publication details."
-    let purpose: AgentPurpose = .research
     let friendlyName = "CrossRef"
 
     var affordance: ToolAffordance {

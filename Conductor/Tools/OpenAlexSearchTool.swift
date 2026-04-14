@@ -7,7 +7,6 @@ import FoundationModels
 struct OpenAlexSearchTool: AgentTool {
     let name = "searchOpenAlex"
     let description = "Search OpenAlex for scholarly works with citation data. Good for cross-disciplinary search and bibliometric analysis."
-    let purpose: AgentPurpose = .research
     let friendlyName = "OpenAlex"
 
     var affordance: ToolAffordance {

@@ -5,7 +5,6 @@ import FoundationModels
 struct WebReaderTool: AgentTool {
     let name = "readWeb"
     let description = "Read a web page and extract its text content. Call when the user provides a URL they want to read, analyze, or summarize."
-    let purpose: AgentPurpose = .web
     let friendlyName = "Web"
 
     var affordance: ToolAffordance {

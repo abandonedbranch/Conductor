@@ -8,7 +8,6 @@ import FoundationModels
 struct PubMedSearchTool: AgentTool {
     let name = "searchPubMed"
     let description = "Search PubMed for biomedical and clinical research papers. Use for medical, health, and life science topics."
-    let purpose: AgentPurpose = .research
     let friendlyName = "PubMed"
 
     var affordance: ToolAffordance {

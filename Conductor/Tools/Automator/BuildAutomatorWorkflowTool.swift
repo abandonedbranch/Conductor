@@ -41,7 +41,6 @@ struct PlannedParameter {
 struct BuildAutomatorWorkflowTool: AgentTool {
     let name = "buildAutomatorWorkflow"
     let description = "Build a macOS Automator .workflow file. ONLY call when the user explicitly asks to create or build a workflow. Do NOT call for questions about Automator."
-    let purpose: AgentPurpose = .build
     let friendlyName = "Automator"
 
     var affordance: ToolAffordance {

@@ -7,7 +7,6 @@ import FoundationModels
 struct SemanticScholarSearchTool: AgentTool {
     let name = "searchSemanticScholar"
     let description = "Search Semantic Scholar for academic research across all disciplines. Good for highly cited papers and cross-disciplinary work."
-    let purpose: AgentPurpose = .research
     let friendlyName = "Semantic Scholar"
 
     var affordance: ToolAffordance {

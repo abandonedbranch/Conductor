@@ -7,7 +7,6 @@ import FoundationModels
 struct ArXivSearchTool: AgentTool {
     let name = "searchArXiv"
     let description = "Search arXiv for cutting-edge preprints in physics, math, computer science, and quantitative biology."
-    let purpose: AgentPurpose = .research
     let friendlyName = "arXiv"
 
     var affordance: ToolAffordance {
