@@ -98,7 +98,29 @@ actor WorkingMemoryGraph {
     }
 
     private func updateSubjectStack(for intent: LanguageIntentQuery) {
-        // Wired in Task 14.
+        let currentTurn = turn
+        switch intent.continuation {
+        case .none, .refines:
+            for name in intent.subjects {
+                if let match = subjects.active.first(where: { $0.name == name }) {
+                    subjects.touch(id: match.id, turn: currentTurn)
+                } else {
+                    subjects.push(name: name, turn: currentTurn, relatesTo: nil)
+                }
+            }
+        case .extends:
+            for name in intent.subjects where !subjects.active.contains(where: { $0.name == name }) {
+                subjects.push(name: name, turn: currentTurn, relatesTo: nil)
+            }
+        case .pivots:
+            subjects.archiveAll()
+            for name in intent.subjects {
+                subjects.push(name: name, turn: currentTurn, relatesTo: nil)
+            }
+        case .recalls:
+            break
+        }
+        changesContinuation.yield(.subject)
     }
 
     func insertAction(_ node: ActionNode) {
