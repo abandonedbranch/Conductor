@@ -59,9 +59,49 @@ class ChatManager {
     private let chatsKey = "conductor.savedChats"
     private let messagesKey = "conductor.savedMessages"
     private let lastSelectedChatKey = "conductor.lastSelectedChat"
+    private let snapshotsKey = "conductor.savedSnapshots"
+    private var chatSnapshots: [UUID: Data] = [:]
 
     init() {
         loadChats()
+        loadSnapshots()
+    }
+
+    @available(iOS 19.0, macOS 26.0, *)
+    func saveSnapshot(_ snapshot: GraphSnapshot, for chatID: UUID) {
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        chatSnapshots[chatID] = data
+        persistSnapshots()
+    }
+
+    func saveSnapshotRaw(_ data: Data, for chatID: UUID) {
+        chatSnapshots[chatID] = data
+        persistSnapshots()
+    }
+
+    @available(iOS 19.0, macOS 26.0, *)
+    func loadSnapshot(for chatID: UUID) -> GraphSnapshot? {
+        guard let data = chatSnapshots[chatID] else { return nil }
+        guard let decoded = try? JSONDecoder().decode(GraphSnapshot.self, from: data) else {
+            return nil
+        }
+        guard decoded.schemaVersion == GraphSnapshot.currentSchemaVersion else {
+            return nil
+        }
+        return decoded
+    }
+
+    private func persistSnapshots() {
+        if let data = try? JSONEncoder().encode(chatSnapshots) {
+            UserDefaults.standard.set(data, forKey: snapshotsKey)
+        }
+    }
+
+    private func loadSnapshots() {
+        if let data = UserDefaults.standard.data(forKey: snapshotsKey),
+           let decoded = try? JSONDecoder().decode([UUID: Data].self, from: data) {
+            chatSnapshots = decoded
+        }
     }
 
     func saveLastSelectedChat(_ chatId: UUID?) {
@@ -141,6 +181,9 @@ class ChatManager {
            uuid == chat.id {
             UserDefaults.standard.removeObject(forKey: lastSelectedChatKey)
         }
+
+        chatSnapshots.removeValue(forKey: chat.id)
+        persistSnapshots()
 
         saveChats()
     }
