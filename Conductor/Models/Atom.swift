@@ -1,5 +1,9 @@
 import Foundation
 
+// Atom uses SE-0295 synthesized Codable. The case names (`success`, `error`, `note`)
+// and every associated-value label are part of the persistence contract —
+// renaming any of them silently breaks decoding of previously persisted data.
+// Any rename requires a migration path.
 enum Atom: Codable, Sendable {
     case success(content: String, source: URL?, toolName: String, timestamp: Date)
     case error(ErrorAtom)

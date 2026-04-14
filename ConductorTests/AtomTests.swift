@@ -27,17 +27,59 @@ struct AtomTests {
 
     @Test("ErrorAtom round-trips")
     func errorCodable() throws {
+        let id = UUID()
+        let ts = Date(timeIntervalSince1970: 500)
         let err = ErrorAtom(
-            actionID: UUID(),
+            actionID: id,
             toolName: "PubMed",
             kind: .timeout,
             message: "slow",
-            timestamp: .now
+            timestamp: ts
         )
         let data = try JSONEncoder().encode(err)
         let decoded = try JSONDecoder().decode(ErrorAtom.self, from: data)
+        #expect(decoded.actionID == id)
+        #expect(decoded.toolName == "PubMed")
         #expect(decoded.kind == .timeout)
         #expect(decoded.message == "slow")
+        #expect(decoded.timestamp == ts)
+    }
+
+    @Test("Error-wrapped atom round-trips through Codable")
+    func errorAtomWrapped() throws {
+        let id = UUID()
+        let err = ErrorAtom(
+            actionID: id,
+            toolName: nil,
+            kind: .unknown,
+            message: "x",
+            timestamp: Date(timeIntervalSince1970: 1)
+        )
+        let atom: Atom = .error(err)
+        let data = try JSONEncoder().encode(atom)
+        let decoded = try JSONDecoder().decode(Atom.self, from: data)
+        guard case let .error(e) = decoded else {
+            Issue.record("expected .error atom")
+            return
+        }
+        #expect(e.actionID == id)
+        #expect(e.toolName == nil)
+        #expect(e.kind == .unknown)
+        #expect(e.message == "x")
+    }
+
+    @Test("Note atom round-trips through Codable")
+    func noteCodable() throws {
+        let ts = Date(timeIntervalSince1970: 2000)
+        let atom: Atom = .note(text: "memo", timestamp: ts)
+        let data = try JSONEncoder().encode(atom)
+        let decoded = try JSONDecoder().decode(Atom.self, from: data)
+        guard case let .note(text, decodedTs) = decoded else {
+            Issue.record("expected .note atom")
+            return
+        }
+        #expect(text == "memo")
+        #expect(decodedTs == ts)
     }
 
     @Test("ErrorKind has the seed set")
