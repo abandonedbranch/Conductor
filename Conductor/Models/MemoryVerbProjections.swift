@@ -12,6 +12,22 @@ enum AppendSlot: String, Codable, Sendable {
 struct ContextProjection: Sendable, Codable {
     let intent: LanguageIntentQuery?
     let activeSubjects: [SubjectStack.Entry]
+
+    private enum CodingKeys: String, CodingKey {
+        case intent
+        case activeSubjects
+    }
+
+    init(intent: LanguageIntentQuery?, activeSubjects: [SubjectStack.Entry]) {
+        self.intent = intent
+        self.activeSubjects = activeSubjects
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(intent, forKey: .intent)
+        try container.encode(activeSubjects, forKey: .activeSubjects)
+    }
 }
 
 struct ActionProjection: Sendable, Codable, Identifiable {
