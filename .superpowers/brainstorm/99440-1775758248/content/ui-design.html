@@ -1,0 +1,89 @@
+<h2>Section 4: What the User Sees</h2>
+<p class="subtitle">Chat UI during a multi-agent research query: "Research CRISPR therapies and build a summary workflow"</p>
+
+<div class="mockup" style="max-width: 520px; margin: 0 auto;">
+  <div class="mockup-header">Conductor — Chat</div>
+  <div class="mockup-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- User message -->
+    <div style="align-self: flex-end; background: #007AFF; color: white; padding: 10px 14px; border-radius: 16px 16px 4px 16px; max-width: 80%; font-size: 14px;">
+      Research CRISPR gene therapies and build me an Automator workflow that emails a weekly summary
+    </div>
+
+    <!-- Conductor planning -->
+    <div style="align-self: flex-start; color: #888; font-size: 13px; padding: 4px 0; font-style: italic;">
+      Breaking this down into 3 steps...
+    </div>
+
+    <!-- Agent narration messages -->
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; border-left: 3px solid #FFA500;">
+      <div style="font-size: 12px; color: #FFA500; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Overview</div>
+      <div style="font-size: 13px; color: #aaa;">Looking up CRISPR gene therapy on Wikipedia...</div>
+      <div style="font-size: 13px; color: #70c070;">Found overview of CRISPR-Cas9 therapeutic applications.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; border-left: 3px solid #4A90D9;">
+      <div style="font-size: 12px; color: #4A90D9; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Research</div>
+      <div style="font-size: 13px; color: #aaa;">Searching PubMed and arXiv for peer-reviewed CRISPR therapy studies...</div>
+      <div style="font-size: 13px; color: #aaa;">Searching Semantic Scholar and OpenAlex for cross-disciplinary sources...</div>
+      <div style="font-size: 13px; color: #70c070;">Found 5 relevant papers across 4 databases.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; border-left: 3px solid #888;">
+      <div style="font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Build</div>
+      <div style="font-size: 13px; color: #aaa;">Building Automator workflow for weekly email summary...</div>
+      <div style="font-size: 13px; color: #70c070;">Created 4-step workflow: Fetch → Format → Mail → Schedule.</div>
+    </div>
+
+    <!-- Final stitched response -->
+    <div style="align-self: flex-start; background: rgba(255,255,255,0.08); padding: 14px; border-radius: 4px 16px 16px 16px; max-width: 90%; font-size: 14px; color: #e0e0e0; line-height: 1.5;">
+      <div style="font-weight: 600; margin-bottom: 8px;">CRISPR Gene Therapy Research Summary</div>
+      <div style="color: #bbb; font-size: 13px;">
+        <strong>Overview:</strong> CRISPR-Cas9 enables precise genome editing and is being applied to sickle cell disease, beta-thalassemia, and certain cancers...<br><br>
+        <strong>Key Findings:</strong> 5 peer-reviewed sources identified. Frangoul et al. (2021) demonstrated durable clinical response in transfusion-dependent thalassemia...<br><br>
+        <strong>Workflow:</strong> Created "Weekly CRISPR Summary" — fetches latest PubMed results, formats digest, emails every Monday.
+      </div>
+      <!-- Info button -->
+      <div style="margin-top: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <div style="width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #666; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; font-style: italic; font-weight: 600;">i</div>
+        <span style="font-size: 12px; color: #666;">View full research log (3 agents, 6 tool calls)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>Key UI Decisions</h3>
+
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="narration-grouped" onclick="toggleSelect(this)">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>Narration grouped by purpose</h3>
+        <p>Agent status messages are grouped under their purpose (Overview, Research, Build) with a colored left border. Messages stream in as agents work. Keeps the chat tidy while showing parallel progress.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="narration-flat" onclick="toggleSelect(this)">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>Narration as flat stream</h3>
+        <p>Agent status messages appear as individual lines in chronological order, like the Claude Haiku screenshot. Simpler, but interleaved purposes might be confusing during parallel work.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="info-sheet" onclick="toggleSelect(this)">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>Info button opens sheet with full graph</h3>
+        <p>Tapping the (i) button opens a sheet showing the complete task graph — each node, its tool calls, raw results, timing, and status. Full transparency for power users.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="info-inline" onclick="toggleSelect(this)">
+      <div class="letter">4</div>
+      <div class="content">
+        <h3>Info button expands inline</h3>
+        <p>Tapping (i) expands the message in-place to show the log entries below the stitched response. Less disruptive but takes up chat space.</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -32,6 +32,14 @@ Open `Conductor.xcodeproj` to build and run.
 
 - Every user-initiated action must provide subtle, visual feedback indicating the state of the request (loading, in-progress, success, error). No silent operations.
 
+## LLM Usage
+
+- **Every on-device LLM call is stateless typed inference.** The model is a pure function from `(instructions, input, tools) → @Generable output`. `LanguageModelSession` instances are disposable — constructed per call, destroyed on return. No call relies on another call's session context.
+- **This rule includes the user-facing chat.** The Conductor does not reply to the user in prose from an LLM session. The Conductor's LLM call produces a typed intent value; the user-visible message is assembled afterward, either by deterministic code or by a separate synthesis call whose context is injected through instructions (RAG), not session history.
+- **Results cross session boundaries only through the working memory graph.** If one call's output must inform another, it is written to the graph between them. Never pass data inside a `LanguageModelSession` that needs to outlive the call.
+- **Natural language is a user interface, not a dialogue partner.** The LLM translates human language into structured values the rest of the system can act on. It does not synthesize free-form text unless explicitly invoked for synthesis, and when it does, the output is still a typed `@Generable` whose prose field is bounded.
+- **Every LLM output is `@Generable`.** No prose-shaped returns. The grammar is the contract.
+
 ## Architecture
 
 - Follow the pattern: **View → Model → Service**. Views observe models; models call services; services own I/O.

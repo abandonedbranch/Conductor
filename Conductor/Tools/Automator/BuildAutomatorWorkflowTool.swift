@@ -38,16 +38,23 @@ struct PlannedParameter {
 // MARK: - Tool
 
 @available(macOS 26.0, *)
-struct BuildAutomatorWorkflowTool: BadgedTool {
+struct BuildAutomatorWorkflowTool: AgentTool {
     let name = "buildAutomatorWorkflow"
     let description = "Build a macOS Automator .workflow file. ONLY call when the user explicitly asks to create or build a workflow. Do NOT call for questions about Automator."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "gear.badge", tint: .gray, label: "Automator")
+    let friendlyName = "Automator"
+
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.build],
+            subjects: [.workflow],
+            answerShapes: [.workflow],
+            priority: 10
+        )
+    }
 
     private let index: AutomatorActionIndex
 
-    init(tracker: ToolUsageTracker, index: AutomatorActionIndex) {
-        self.tracker = tracker
+    init(index: AutomatorActionIndex) {
         self.index = index
     }
 
@@ -58,8 +65,6 @@ struct BuildAutomatorWorkflowTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async -> String {
-        await tracker.record(badge)
-
         // Step 1: Get a focused catalog of relevant actions (not all 680+)
         let relevant = await index.search(
             query: arguments.workflowDescription,
@@ -145,13 +150,6 @@ struct BuildAutomatorWorkflowTool: BadgedTool {
         } catch {
             return "Could not save workflow to temporary location: \(error.localizedDescription)"
         }
-
-        let preview = WorkflowPreview(
-            title: plan.title,
-            steps: stepPreviews,
-            tempFileURL: tempURL
-        )
-        await tracker.setWorkflowPreview(preview)
 
         // Step 5: Return minimal description for the main session (context is precious)
         return "Created \(stepPreviews.count)-step workflow: \"\(plan.title)\"."

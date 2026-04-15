@@ -5,11 +5,19 @@ import FoundationModels
 // MARK: - PubMed Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct PubMedSearchTool: BadgedTool {
+struct PubMedSearchTool: AgentTool {
     let name = "searchPubMed"
     let description = "Search PubMed for biomedical and clinical research papers. Use for medical, health, and life science topics."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "cross.case", tint: .red, label: "PubMed")
+    let friendlyName = "PubMed"
+
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic, .biomedical],
+            answerShapes: [.citations, .direct],
+            priority: 10
+        )
+    }
 
     @Generable
     struct Arguments {
@@ -21,8 +29,6 @@ struct PubMedSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async -> String {
-        await tracker.record(badge)
-
         let max = arguments.maxResults ?? 3
         let query = arguments.searchQuery
 
@@ -33,11 +39,6 @@ struct PubMedSearchTool: BadgedTool {
             }
 
             let articles = try await fetchArticles(pmids: pmids)
-
-            for article in articles {
-                let url = "https://pubmed.ncbi.nlm.nih.gov/\(article.pmid)"
-                await tracker.addSource(ToolSource(title: article.title, url: url))
-            }
 
             var lines = ["PubMed results for \"\(query)\":\n"]
             for (index, article) in articles.enumerated() {

@@ -4,11 +4,19 @@ import FoundationModels
 // MARK: - Semantic Scholar Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct SemanticScholarSearchTool: BadgedTool {
+struct SemanticScholarSearchTool: AgentTool {
     let name = "searchSemanticScholar"
     let description = "Search Semantic Scholar for academic research across all disciplines. Good for highly cited papers and cross-disciplinary work."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "brain.head.profile", tint: .blue, label: "Semantic Scholar")
+    let friendlyName = "Semantic Scholar"
+
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic],
+            answerShapes: [.citations, .direct],
+            priority: 10
+        )
+    }
 
     @Generable
     struct Arguments {
@@ -20,20 +28,12 @@ struct SemanticScholarSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         do {
             let limit = arguments.maxResults ?? 3
             let papers = try await searchPapers(query: arguments.searchQuery, limit: limit)
 
             guard !papers.isEmpty else {
                 return "Semantic Scholar found no results for \"\(arguments.searchQuery)\"."
-            }
-
-            for paper in papers {
-                if let urlString = paper.url, let url = URL(string: urlString) {
-                    await tracker.addSource(ToolSource(title: paper.title, url: url.absoluteString))
-                }
             }
 
             var lines = ["Semantic Scholar results for \"\(arguments.searchQuery)\":\n"]

@@ -4,11 +4,19 @@ import FoundationModels
 // MARK: - Wikipedia Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct WikipediaSearchTool: BadgedTool {
+struct WikipediaSearchTool: AgentTool {
     let name = "searchWikipedia"
     let description = "Search Wikipedia for general knowledge, overviews, historical context, and encyclopedic information."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "globe", tint: .orange, label: "Wikipedia")
+    let friendlyName = "Wikipedia"
+
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find, .summarize],
+            subjects: [.encyclopedic],
+            answerShapes: [.overview, .summary, .direct],
+            priority: 5
+        )
+    }
 
     @Generable
     struct Arguments {
@@ -20,15 +28,10 @@ struct WikipediaSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         do {
             let result = try await searchWikipedia(query: arguments.searchQuery)
             let maxLength = arguments.maxSummaryLength ?? 500
             let truncatedSummary = String(result.extract.prefix(maxLength))
-            if let url = result.url {
-                await tracker.addSource(ToolSource(title: result.title, url: url))
-            }
             var output = """
                 Wikipedia Summary for "\(arguments.searchQuery)":
 

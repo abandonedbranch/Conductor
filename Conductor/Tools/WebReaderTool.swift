@@ -2,12 +2,19 @@ import Foundation
 import FoundationModels
 
 @available(iOS 19.0, macOS 26.0, *)
-struct WebReaderTool: BadgedTool {
+struct WebReaderTool: AgentTool {
     let name = "readWeb"
     let description = "Read a web page and extract its text content. Call when the user provides a URL they want to read, analyze, or summarize."
-    let badge = ToolBadge(icon: "globe", tint: .purple, label: "Web")
+    let friendlyName = "Web"
 
-    let tracker: ToolUsageTracker
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.read, .summarize],
+            subjects: [.webpage],
+            answerShapes: [.summary, .direct],
+            priority: 10
+        )
+    }
 
     @Generable
     struct Arguments {
@@ -16,29 +23,15 @@ struct WebReaderTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         let url = try validateAndUnwrap(arguments.url)
 
-        await tracker.setWebReaderStatus(.loading(url))
-
         let service = await WebReaderService()
-        let result: WebReaderResult
-        do {
-            result = try await service.read(url: url)
-        } catch {
-            await tracker.setWebReaderStatus(.error(error.localizedDescription))
-            throw error
-        }
-
-        await tracker.addSource(ToolSource(title: result.title, url: result.url.absoluteString))
+        let result = try await service.read(url: url)
 
         if result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            await tracker.setWebReaderStatus(.error("Page had no text content"))
             throw WebReaderError.emptyContent(url)
         }
 
-        await tracker.setWebReaderStatus(.success(result))
         return result.text
     }
 

@@ -4,11 +4,19 @@ import FoundationModels
 // MARK: - CrossRef Tool
 
 @available(iOS 19.0, macOS 26.0, *)
-struct CrossRefSearchTool: BadgedTool {
+struct CrossRefSearchTool: AgentTool {
     let name = "searchCrossRef"
     let description = "Search CrossRef for DOI metadata, publisher information, and citation counts. Good for verifying publication details."
-    let tracker: ToolUsageTracker
-    let badge = ToolBadge(icon: "link.circle", tint: .gray, label: "CrossRef")
+    let friendlyName = "CrossRef"
+
+    var affordance: ToolAffordance {
+        ToolAffordance(
+            verbs: [.find],
+            subjects: [.academic],
+            answerShapes: [.citations, .direct],
+            priority: 8
+        )
+    }
 
     @Generable
     struct Arguments {
@@ -20,20 +28,12 @@ struct CrossRefSearchTool: BadgedTool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await tracker.record(badge)
-
         do {
             let maxResults = arguments.maxResults ?? 3
             let items = try await fetchResults(query: arguments.searchQuery, maxResults: maxResults)
 
             guard !items.isEmpty else {
                 return "CrossRef results for \"\(arguments.searchQuery)\":\n\nNo results found."
-            }
-
-            for item in items {
-                let url = "https://doi.org/\(item.doi)"
-                let title = item.title.first ?? "Untitled"
-                await tracker.addSource(ToolSource(title: title, url: url))
             }
 
             var lines = ["CrossRef results for \"\(arguments.searchQuery)\":\n"]
