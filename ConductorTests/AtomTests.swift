@@ -27,3 +27,17 @@ import Foundation
         #expect(all.count == 5)
     }
 }
+
+@Suite struct AtomRecordedTests {
+    @Test func recorded_exposesRoleValueSourceOrigin() {
+        let e = AtomRecorded(
+            role: "search.target",
+            value: .choice(namespace: "search.target", value: "pubMed"),
+            source: .tagger,
+            origin: .compile()
+        )
+        #expect(e.role == "search.target")
+        #expect(e.source == .tagger)
+        #expect(e.origin.stepID == nil)
+    }
+}
