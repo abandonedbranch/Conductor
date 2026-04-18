@@ -2,7 +2,8 @@
 
 ## Project
 
-Multiplatform SwiftUI app targeting iOS 17+, iPadOS 17+, and macOS 14+.
+Multiplatform SwiftUI app targeting iOS 26+, iPadOS 26+, and macOS 26+.
+FoundationModels (`@Generable`) drives the LLM layer, which pins the minimum to 26.
 Open `Conductor.xcodeproj` to build and run.
 
 ## Code Style
