@@ -1,6 +1,24 @@
 Contributors
 ============
 
+Conductor is a natural-language workflow creator. Prose compiles into a
+pipeline of typed verbs through a deterministic-first stack (NSDataDetector →
+NLTagger → NLEmbedding → Foundation Models), and the pipeline runs under an
+event-sourced runtime. See README.md for the full picture and CLAUDE.md for
+coding conventions.
+
+Architecture expectations for contributions:
+
+  - Determinism first. Prefer a non-LLM path when one exists.
+  - Every LLM output is @Generable. No prose-shaped returns.
+  - Every LanguageModelSession is constructed per call and destroyed on
+    return. No session state crosses calls.
+  - Results cross verb boundaries only through the event log.
+  - Every user-initiated action surfaces its status. No silent operations.
+
+Attribution policy
+------------------
+
 When submitting commits or pull requests to this repository, remove all
 AI-generated branding, attribution, and links. This includes but is not
 limited to:
