@@ -1,10 +1,39 @@
 import Foundation
 import Observation
 
+/// Bridge from the Runtime to an interactive ask surface. Implementations
+/// (`AppAskResolver` in production, fakes in tests) present the user with an
+/// `AskView` for `kind` and return the resolved `AtomValue`, or `nil` if the
+/// user dismissed. The Runtime records the answer as an `AtomRecorded`
+/// event with source `.userAsked`, so later steps see it in the log.
 protocol AskResolver: Sendable {
     func ask(role: String, kind: AtomKind) async -> AtomValue?
 }
 
+/// Executes a compiled pipeline one `Step` at a time.
+///
+/// Runtime does three non-obvious things:
+///
+///   1. **Resolves parameters per-step**, in this precedence order:
+///      log lookup (latest `AtomRecorded` matching the role) → declared
+///      default → user ask via `AskResolver`. If the user declines a
+///      required ask, the step emits `StepFailed` and returns, rather
+///      than propagating an exception — missing input is a normal
+///      failure mode, not a programming error.
+///
+///   2. **Fans out over collection upstream events.** When a step's needs
+///      reference a `SearchResults` with more than one paper, the runtime
+///      loops the step once per paper, tagging each iteration in its
+///      `Origin.iteration`. This is how "search for papers, then summarize
+///      them" yields one `SummaryProduced` per paper.
+///
+///   3. **Attributes verb-execute failures to the active step.** Earlier
+///      revisions let execute-time errors bubble up to `AppModel`, which
+///      logged `StepFailed` with a random UUID that no step matched — the
+///      UI rendered the failing step as idle instead of failed. The
+///      `do/catch` around `def.execute` inside `runOneIteration` now emits
+///      `StepFailed(stepID: step.id, ...)` and re-throws to halt downstream
+///      steps that depend on the failed producer.
 @Observable
 @MainActor
 final class Runtime {
