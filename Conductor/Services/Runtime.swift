@@ -73,8 +73,13 @@ final class Runtime {
         let upstream = collectUpstream(needs: def.needs)
         let origin = Origin.step(id: step.id, index: step.index, iteration: iteration)
         let inputs = ResolvedInputs(atoms: resolvedAtoms, upstream: upstream)
-        let emitted = try await def.execute(resolved: inputs, origin: origin, http: http, llm: llm)
-        log.append(emitted)
+        do {
+            let emitted = try await def.execute(resolved: inputs, origin: origin, http: http, llm: llm)
+            log.append(emitted)
+        } catch {
+            log.append(StepFailed(stepID: step.id, message: "\(error)", origin: origin))
+            throw error
+        }
     }
 
     private func collectUpstream(needs: [UpstreamEventNeed]) -> [any Event] {

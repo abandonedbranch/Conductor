@@ -33,6 +33,25 @@ import Foundation
         #expect(log.eventsOfType(ReadCompleted.self).count == 1)
     }
 
+    @Test func execute_throwing_emitsStepFailedWithStepID() async throws {
+        let log = EventLog()
+        let url = URL(string: "https://example.com")!
+        let http = FakeHTTPClient()
+        http.scripted[url] = Data("<title>T</title><body>B</body>".utf8)
+        let llm = FakeLLMSession()
+        log.append(AtomRecorded(role: "url", value: .url(url), source: .detector, origin: .compile()))
+
+        let runtime = Runtime(log: log, http: http, llm: llm, askResolver: AutoAcceptAskResolver())
+        let summarizeStep = Step(index: 1, verb: .summarize)
+        await #expect(throws: (any Error).self) {
+            try await runtime.run(steps: [Step(index: 0, verb: .read), summarizeStep])
+        }
+
+        let failures = log.eventsOfType(StepFailed.self)
+        #expect(failures.count == 1)
+        #expect(failures.first?.stepID == summarizeStep.id)
+    }
+
     @Test func forEach_whenSummarizeFollowsMultiPaperSearch() async throws {
         let log = EventLog()
         let papers = [
