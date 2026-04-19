@@ -87,7 +87,25 @@ enum Layer2Tagger {
     }
 
     static func aliasAtoms(in prose: String) -> [AtomRecorded] {
-        // Implemented in Task 15
-        []
+        var out: [AtomRecorded] = []
+        let lower = prose.lowercased()
+        for verb in Verb.allCases {
+            let params = VerbCatalog.definition(for: verb).parameters
+            for param in params {
+                guard case let .choice(namespace, _) = param.kind else { continue }
+                for (alias, canonical) in param.aliases {
+                    if lower.contains(alias) {
+                        out.append(AtomRecorded(
+                            role: param.role,
+                            value: .choice(namespace: namespace, value: canonical),
+                            source: .tagger,
+                            origin: .compile()
+                        ))
+                        break
+                    }
+                }
+            }
+        }
+        return out
     }
 }

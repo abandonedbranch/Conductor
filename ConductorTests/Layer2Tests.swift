@@ -34,3 +34,22 @@ import Foundation
         if case let .text(t) = terms?.value { #expect(t.localizedCaseInsensitiveContains("work")) }
     }
 }
+
+@Suite struct Layer2AliasTests {
+    @Test func pubmedTokenMatchesSearchTarget() {
+        let r = Layer2Tagger.extract(from: "find 3 PubMed papers")
+        let target = r.atoms.first { $0.role == "search.target" }
+        if case let .choice(_, v) = target?.value { #expect(v == "pubMed") } else { Issue.record("no target") }
+    }
+
+    @Test func arxivOrgTokenMatchesSearchTarget() {
+        let r = Layer2Tagger.extract(from: "search arxiv.org for transformers")
+        let target = r.atoms.first { $0.role == "search.target" }
+        if case let .choice(_, v) = target?.value { #expect(v == "arxiv") }
+    }
+
+    @Test func missingTargetProducesNoAtom() {
+        let r = Layer2Tagger.extract(from: "find 3 papers")
+        #expect(r.atoms.first { $0.role == "search.target" } == nil)
+    }
+}
