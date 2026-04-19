@@ -9,7 +9,13 @@ struct Layer2Result: Sendable {
 enum Layer2Tagger {
     static func extract(from prose: String) -> Layer2Result {
         let (verbs, positions) = verbsAndPositions(in: prose)
-        let atoms = nounPhraseAtoms(in: prose, verbPositions: positions) + aliasAtoms(in: prose)
+        let npAtoms = nounPhraseAtoms(in: prose, verbPositions: positions)
+        // "about X" phrases are a reliable signal for search topics; prefer them over
+        // the nearest bare NP when the search verb is present.
+        let aboutAtoms = aboutPhraseAtoms(in: prose, verbs: verbs)
+        // aboutAtoms override npAtoms for the same roles — union with aboutAtoms last
+        // so the runtime (which uses latestAtom) picks them up.
+        let atoms = npAtoms + aliasAtoms(in: prose) + aboutAtoms
         return Layer2Result(verbs: verbs, atoms: atoms)
     }
 
@@ -84,6 +90,29 @@ enum Layer2Tagger {
         let aMid = prose.distance(from: prose.startIndex, to: a.lowerBound) + prose.distance(from: a.lowerBound, to: a.upperBound) / 2
         let bMid = prose.distance(from: prose.startIndex, to: b.lowerBound) + prose.distance(from: b.lowerBound, to: b.upperBound) / 2
         return abs(aMid - bMid)
+    }
+
+    /// Extracts topic phrases introduced by "about X" when a search verb is present.
+    /// English search sentences frequently state the topic as "about <topic>" before
+    /// the search verb, which is more reliable than the nearest bare noun phrase.
+    static func aboutPhraseAtoms(in prose: String, verbs: [Verb]) -> [AtomRecorded] {
+        guard verbs.contains(.search) else { return [] }
+        // Match "about <topic>" where <topic> runs until a hard clause boundary
+        // (comma, semicolon, or end-of-string). We intentionally do NOT stop at
+        // "and <noun>" so that "CRISPR and sickle-cell" is captured whole.
+        guard let regex = try? NSRegularExpression(
+            pattern: #"\babout\s+([\w][\w\s-]*?)(?=\s*[,;]|\s*$)"#,
+            options: .caseInsensitive
+        ) else { return [] }
+        let range = NSRange(prose.startIndex..., in: prose)
+        var out: [AtomRecorded] = []
+        regex.enumerateMatches(in: prose, options: [], range: range) { match, _, _ in
+            guard let m = match, let captureRange = Range(m.range(at: 1), in: prose) else { return }
+            let topic = String(prose[captureRange]).trimmingCharacters(in: .whitespaces)
+            guard !topic.isEmpty else { return }
+            out.append(AtomRecorded(role: "search.terms", value: .text(topic), source: .tagger, origin: .compile()))
+        }
+        return out
     }
 
     static func aliasAtoms(in prose: String) -> [AtomRecorded] {
