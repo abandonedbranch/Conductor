@@ -18,3 +18,19 @@ import Foundation
         #expect(r.verbs == [.search, .summarize])
     }
 }
+
+@Suite struct Layer2NPTests {
+    @Test func extractsSearchTermsAdjacentToFind() {
+        let r = Layer2Tagger.extract(from: "find papers about CRISPR and sickle-cell")
+        let terms = r.atoms.first { $0.role == "search.terms" }
+        if case let .text(t) = terms?.value { #expect(t.localizedCaseInsensitiveContains("CRISPR")) } else { Issue.record("no terms") }
+    }
+
+    @Test func nounPhraseIsNearestToMatchedVerb() {
+        // "summarize the article and find recent work" → `summarize` has no declared NP param,
+        // `search.terms` goes with `find` / `search`. The NP nearest `find` wins.
+        let r = Layer2Tagger.extract(from: "summarize the article and find recent work")
+        let terms = r.atoms.first { $0.role == "search.terms" }
+        if case let .text(t) = terms?.value { #expect(t.localizedCaseInsensitiveContains("work")) }
+    }
+}
