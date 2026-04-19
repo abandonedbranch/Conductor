@@ -30,6 +30,7 @@ Pods/
 # Claude Code
 .claude/
 .mcp.json
+.superpowers/
 
 # Secrets / env
 .env

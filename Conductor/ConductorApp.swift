@@ -6,10 +6,6 @@ struct ConductorApp: App {
         WindowGroup {
             ContentView()
         }
-        #if os(macOS)
-        Settings {
-            SettingsView()
-        }
-        #endif
+        .windowResizability(.contentSize)
     }
 }

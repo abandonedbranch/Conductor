@@ -2,7 +2,8 @@
 
 ## Project
 
-Multiplatform SwiftUI app targeting iOS 17+, iPadOS 17+, and macOS 14+.
+Multiplatform SwiftUI app targeting iOS 26+, iPadOS 26+, and macOS 26+.
+FoundationModels (`@Generable`) drives the LLM layer, which pins the minimum to 26.
 Open `Conductor.xcodeproj` to build and run.
 
 ## Code Style
@@ -19,6 +20,13 @@ Open `Conductor.xcodeproj` to build and run.
 - Prefer `let` over `var`. Prefer immutable data flow.
 - Use `guard` for early exits. Avoid deep nesting.
 - Use Swift's type inference — omit explicit types when the compiler can infer them and the result is still readable.
+
+## Documentation
+
+- Add a brief Swift doc comment (`///`) to every type, protocol, property, method, and enum case — a line or two describing what it is. Well-named identifiers are a starting point, not a substitute.
+- For files whose logic is novel or unintuitive (event-sourcing, the four-layer compiler, needs-closure inflation, stateless LLM contracts, runtime fan-out and failure attribution), add a file-level or type-level doc block explaining *why* the shape is what it is, what it coordinates with, and any non-obvious invariants.
+- Prefer `///` for API documentation. Reserve inline `//` for local explanations — a workaround, a subtle invariant, a constraint not visible in the code.
+- Do not reference PRs, issue numbers, task names, commit SHAs, or caller names in comments. Those rot as the codebase evolves. Explain intent, not history.
 
 ## Privacy & Transparency
 
