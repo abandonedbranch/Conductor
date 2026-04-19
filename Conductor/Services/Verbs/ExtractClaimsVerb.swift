@@ -14,6 +14,15 @@ enum ExtractClaimsVerb: VerbDefinition {
         http: any HTTPClient,
         llm: any LLMSession
     ) async throws -> [any Event] {
-        fatalError("implemented in Task 26")
+        guard let summary = resolved.upstream.compactMap({ $0 as? SummaryProduced }).last else {
+            return [StepFailed(stepID: origin.stepID ?? UUID(), message: "no summary", origin: origin)]
+        }
+        do {
+            let gen = try await llm.extractClaims(from: summary.summary)
+            let claims = gen.claims.map { Claim(text: $0) }
+            return [ClaimsExtracted(claims: claims, origin: origin)]
+        } catch {
+            return [StepFailed(stepID: origin.stepID ?? UUID(), message: "\(error)", origin: origin)]
+        }
     }
 }
