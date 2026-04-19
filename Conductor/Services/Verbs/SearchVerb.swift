@@ -26,6 +26,36 @@ enum SearchVerb: VerbDefinition {
         http: any HTTPClient,
         llm: any LLMSession
     ) async throws -> [any Event] {
-        fatalError("implemented in Task 25")
+        let terms: String
+        if let claims = resolved.upstream.compactMap({ $0 as? ClaimsExtracted }).last, !claims.claims.isEmpty {
+            terms = claims.claims.map { $0.text }.joined(separator: " ")
+        } else if case let .text(t)? = resolved.atoms["search.terms"] {
+            terms = t
+        } else {
+            return [StepFailed(stepID: origin.stepID ?? UUID(), message: "no search terms", origin: origin)]
+        }
+
+        guard case let .choice(_, target)? = resolved.atoms["search.target"] else {
+            return [StepFailed(stepID: origin.stepID ?? UUID(), message: "no search target", origin: origin)]
+        }
+
+        let limit: Int = {
+            if case let .number(n)? = resolved.atoms["search.limit"] { return Int(n) }
+            return 5
+        }()
+
+        do {
+            let papers: [Paper]
+            switch target {
+            case "pubMed": papers = try await PubMedBackend.search(terms: terms, limit: limit, http: http)
+            case "arxiv":  papers = try await ArxivBackend.search(terms: terms, limit: limit, http: http)
+            case "web":    papers = try await WebBackend.search(terms: terms, limit: limit, http: http)
+            default:
+                return [StepFailed(stepID: origin.stepID ?? UUID(), message: "unknown target \(target)", origin: origin)]
+            }
+            return [SearchResults(papers: papers, target: target, origin: origin)]
+        } catch {
+            return [StepFailed(stepID: origin.stepID ?? UUID(), message: "\(error)", origin: origin)]
+        }
     }
 }
