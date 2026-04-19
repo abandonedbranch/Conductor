@@ -27,6 +27,9 @@ enum ProseCompiler {
             usedLLM = true
         }
 
+        // Needs closure: prepend any upstream verbs required by the detected verbs.
+        verbs = NeedsClosure.inflate(verbs: verbs, existingLog: [])
+
         return CompileResult(verbs: verbs, atoms: l1 + l2.atoms, usedLLM: usedLLM)
     }
 
