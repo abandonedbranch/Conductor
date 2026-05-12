@@ -36,3 +36,6 @@ Pods/
 .env
 *.xcconfig
 !Conductor/Configuration/Base.xcconfig
+
+# vscode
+.vscode/
