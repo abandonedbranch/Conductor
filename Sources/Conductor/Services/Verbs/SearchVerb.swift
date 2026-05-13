@@ -7,11 +7,12 @@ enum SearchVerb: VerbDefinition {
         VerbParameter(role: "search.terms", kind: .text, aliases: [:], required: true, defaultValue: nil),
         VerbParameter(
             role: "search.target",
-            kind: .choice(namespace: "search.target", cases: ["pubMed", "arxiv", "web"]),
+            kind: .choice(namespace: "search.target", cases: ["pubMed", "arxiv", "web", "wikipedia"]),
             aliases: [
                 "pubmed": "pubMed", "pub med": "pubMed",
                 "arxiv": "arxiv", "arxiv.org": "arxiv",
-                "web": "web", "google": "web", "internet": "web"
+                "web": "web", "google": "web", "internet": "web",
+                "wikipedia": "wikipedia", "wiki": "wikipedia", "wikipedia.org": "wikipedia"
             ],
             required: true,
             defaultValue: nil
@@ -47,9 +48,10 @@ enum SearchVerb: VerbDefinition {
         do {
             let papers: [Paper]
             switch target {
-            case "pubMed": papers = try await PubMedBackend.search(terms: terms, limit: limit, http: http)
-            case "arxiv":  papers = try await ArxivBackend.search(terms: terms, limit: limit, http: http)
-            case "web":    papers = try await WebBackend.search(terms: terms, limit: limit, http: http)
+            case "pubMed":    papers = try await PubMedBackend.search(terms: terms, limit: limit, http: http)
+            case "arxiv":     papers = try await ArxivBackend.search(terms: terms, limit: limit, http: http)
+            case "web":       papers = try await WebBackend.search(terms: terms, limit: limit, http: http)
+            case "wikipedia": papers = try await WikipediaBackend.search(terms: terms, limit: limit, http: http)
             default:
                 return [StepFailed(stepID: origin.stepID ?? UUID(), message: "unknown target \(target)", origin: origin)]
             }
